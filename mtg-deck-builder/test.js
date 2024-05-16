@@ -27,7 +27,6 @@
 
 
     function fetchReq(event, searchBox) {
-        // console.log(searchBox.value)
         const userInput = searchBox.value
         document.getElementById('datalistOptions').innerHTML = ""
         if (event.key === "Enter") {
