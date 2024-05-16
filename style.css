@@ -1,0 +1,241 @@
+nav ul {
+  display: inline-block;
+}
+
+body {
+  background-image: url(photos/decks-list-bg.jpeg);
+}
+
+.login-bg {
+  background-image: url(photos/login-bg.jpeg);
+}
+
+.about-bg {
+  background-image: url(photos/about-bg.jpeg);
+}
+
+.decks-bg {
+  background-image: url(photos/my-decks.jpeg);
+}
+
+.all-bg {
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-size: cover;
+  padding: 0px;
+  margin: 0px;
+}
+
+ul li a {
+  white-space: nowrap;
+}
+
+#logo {
+  min-width: 150px;
+  float: left;
+  padding: 0px;
+  margin: 0px;
+}
+
+.sticky-nav {
+  background-color: darkgray;
+  opacity: 70%;
+}
+/* end of nav bar and background code */
+/* forms */
+.forms {
+  background-color: white;
+  border-radius: 10px;
+  margin-top: 250px;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 600px;
+  padding: 45px;
+  opacity: 95%;
+}
+
+#loginForm {
+  filter: drop-shadow(-6px 6px 32px #df3dff);
+}
+
+.form-control {
+  margin: 0px 20px 20px 20px ;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 600px;
+}
+
+.search-bar {
+  padding: 0px;
+}
+
+/* end of forms */
+/* buttons */
+.rename-btn {
+  border: none;
+  background: white;
+  float: left;
+  margin: 3px;
+  padding: 0;
+}
+.x-btn {
+  border: none;
+  background: white;
+  float: right;
+  margin: 0;
+  padding: 0;
+}
+
+.rename-icon {
+  max-width: 12px;
+  opacity: 25%;
+  transition: 0.3s;
+}
+
+.x-icon {
+  max-width: 15px;
+  opacity: 0%;
+  transition: 0.6s;
+}
+
+.card-name:hover .x-icon {
+  opacity: 1;
+}
+
+.card-name {
+  white-space: nowrap;
+}
+
+.rename-btn:hover .rename-icon {
+  opacity: 1;
+}
+
+.delete-btn {
+  padding: 2px;
+  margin: auto;
+  float: right;
+  font-weight: bolder;
+}
+
+.trash-btn {
+  max-width: 25px;
+  float: right;
+}
+
+.plus-icon {
+  float: left;
+  margin: 15px 10px 15px 40px;
+  height: 184px;
+  width: 8rem;
+}
+
+.login-btn {
+  margin-left: 400px;
+  width: 90px;
+}
+
+.create-btn {
+  margin-left: 340px;
+  height: 40px;
+}
+
+.sort-icon {
+  background: white;
+  width: 40px;
+  padding: 0px;
+  float: right;
+  margin-right: 100px;
+  margin-top: 25px;
+  border-radius: 7px;
+  opacity: 50%;
+}
+
+/* end of buttons */
+/* about page */
+#aboutTextBox {
+  background-color: white;
+  padding: 20px;
+  text-align: center;
+  border-radius: 25px;
+  margin: 100px;
+  filter: drop-shadow(0px -3px 14px #ff7b00);
+}
+
+.about-text {
+  margin: 10px;
+  overflow: auto;
+  max-height: 480px;
+  padding-right: 10px;
+}
+
+/* decks page */
+#decks-list {
+  background-color: white;
+  padding: 15px;
+  border-radius: 20px;
+  filter: drop-shadow(5px 5px 10px #00ff1e);
+  width: 60%;
+  max-height: 650px;
+  overflow: hidden;
+  opacity: 90%;
+  margin: 0 auto;
+  margin-top: 50px;
+}
+
+th {
+  font-weight:bolder;
+}
+
+/* for search bar on my decks */
+.form-label {
+  margin: 8px;
+  overflow: auto;
+  max-height: 600px;
+  padding: 0px 30px 10px 20px;
+}
+
+/* deck list page */
+.deck-icon {
+  max-height: 190px;
+  float: left;
+  width: 8rem;
+  margin: 15px 10px 15px 40px;
+}
+
+.deck-info {
+  font-size: 0.70rem;
+  font-weight:400;
+  padding: 1px;
+  margin: 0 auto;
+  color: white;
+  font-family: Georgia, Times, 'Times New Roman', serif;
+}
+
+.plus-placement {
+  padding-top: 32px;
+}
+
+.deck-placement {
+  width: 100%;
+  border-radius: 5px;
+}
+
+.page-placement {
+  margin-left: 50px;
+}
+
+/* webkit for scrollbar */
+/* Chrome, Edge, and Safari */
+*::-webkit-scrollbar {
+  width: 5px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #ffffff;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #9c9c9c;
+  border-radius: 25px;
+  border: 1px solid #8c8c8c;
+}
