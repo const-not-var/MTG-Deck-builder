@@ -2,11 +2,12 @@
 const dataCardTemplate = document.querySelector("[data-card-template]")
 
 function fetchReq(event, searchBox) {
-    const userInput = searchBox.value
-    document.getElementById('datalistOptions').innerHTML = ""
+    const userInput = searchBox.value;
+    document.getElementById('datalistOptions').innerHTML = "";
     if (event.key === "Enter") {
         fetch('https://api.magicthegathering.io/v1/cards?' + new URLSearchParams({
-            name: userInput
+            name: userInput,
+            pageSize: 10
         }))
         .then(response => {
             if (!response.ok) {
