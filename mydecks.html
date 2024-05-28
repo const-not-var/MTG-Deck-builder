@@ -30,10 +30,10 @@
                         </div>
                       </nav> 
                             <!-- searchbar for data lists -->
-                            <label for="exampleDataList" class="form-label"></label>
-                            <input class="form-control" onkeydown="fetchReq(event, this)" list="datalistOptions" id="exampleDataList" type="search" placeholder="Type to search...">
+                            <label for="exampleDataList" class="form-label"></label>                           
+                            <input class="form-control"  onkeydown="fetchReq(event, this)" list="datalistOptions" id="exampleDataList" type="search" placeholder="Type to search...">
                             <div class="card-names"></div>
-                              <datalist id="datalistOptions" data-card-template>
+                              <datalist id="datalistOptions" onclick="addCards(event, this)" data-card-template>
                                 <option value="">
                                 <option value="">
                                 <option value="">
@@ -56,7 +56,7 @@
                                 <tbody class="table-group-divider">
                                   <tr class="card-name">
                                     <th scope="row">1</th>
-                                    <td>Card, Card Lord of the cards</td>
+                                    <td >Card, Card Lord of the cards</td>
                                     <td>01/01/1001</td>
                                     <td><button type="submit" class="x-btn"><img src="photos/delete.png" alt="A red X" class="x-icon"></button></td>
                                   </tr>

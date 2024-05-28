@@ -7,7 +7,7 @@ function fetchReq(event, searchBox) {
     if (event.key === "Enter") {
         fetch('https://api.magicthegathering.io/v1/cards?' + new URLSearchParams({
             name: userInput,
-            pageSize: 10
+            // pageSize: 10
         }))
         .then(response => {
             if (!response.ok) {
@@ -34,7 +34,15 @@ function fetchReq(event, searchBox) {
     }
 }
 
+function addCards(event, searchInput) {
+    const addCard = searchbox.value
+    const cardToAdd = document.getElementById("datalistOptions");
+    cardToAdd.innerHTML = "";
+    const options = document.createElement(options);
+    options.value =  
 
+    console.log("I am clicked");
+}
 
 
 
