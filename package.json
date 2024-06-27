@@ -1,0 +1,26 @@
+{
+  "name": "mtg-deck-builder",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "directories": {
+    "test": "test"
+  },
+"scripts": {
+   "start": "node app.js",
+   "test": "mocha --timeout 10000"
+},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2",
+    "mongoose": "^8.4.4"
+  },
+  "devDependencies": {
+    "chai": "^5.1.1",
+    "chai-http": "^5.0.0",
+    "mocha": "^10.5.2"
+  }
+}
+
