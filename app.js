@@ -5,7 +5,7 @@ const mongoose = require("mongoose");
 //middleware
 app.use(express.json());
 
-app.listen(3002, () => {
+app.listen(5000, () => {
   console.log("Server is running on port 3001");
 });
 
@@ -25,7 +25,6 @@ mongoose.connect(
     }
   }
 );
-
 
 
 module.exports = app;

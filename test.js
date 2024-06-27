@@ -3,7 +3,6 @@
 // console.log(People);
 // use('mtg-deck-builder');
 
-
 $(document).ready(function(){
     if (window.jQuery) {
         // jQuery is available.

@@ -1,6 +1,5 @@
 const Deck = require("../models/Decks");
 const chai = require("chai");
-
 const chaiHttp = require("chai-http");
 const app = require("../app");
 chai.should();
@@ -46,7 +45,7 @@ describe("Decks", () => {
   describe("/GET/:id deck", () => {
     it("it should GET a deck by the id", (done) => {
       let deck = new Deck({
-        title: "This is a specific deck",
+        title: "This is a specific deck"
       });
       deck.save((err, deck) => {
         chai
@@ -65,7 +64,7 @@ describe("Decks", () => {
   describe("/PUT/:id deck", () => {
     it("it should UPDATE a deck given the id", (done) => {
       let deck = new Deck({
-        title: "This is an updated deck",
+        title: "This is an updated deck"
       });
       deck.save((err, deck) => {
         console.log(deck.id);
@@ -73,7 +72,7 @@ describe("Decks", () => {
           .request(app)
           .put("/api/decks/" + deck.id)
           .send({
-            title: "The deck was updated",
+            title: "The deck was updated"
           })
           .end((err, res) => {
             res.should.have.status(200);
@@ -87,7 +86,7 @@ describe("Decks", () => {
   describe("/DELETE/:id deck", () => {
     it("it should DELETE a deck given the id", (done) => {
       let deck = new Deck({
-        title: "This is a deleted deck",
+        title: "This is a deleted deck"
       });
       deck.save((err, deck) => {
         chai
