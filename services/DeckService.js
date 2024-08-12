@@ -1,20 +1,29 @@
-const DeckModel = require("../models/Decks");
+import DeckModel from "../models/Deck.js";
 
-exports.getAllDecks = async () => {
+const getAllDecks = async () => {
   return await DeckModel.find();
 };
 
-exports.createDeck = async (deck) => {
+const createDeck = async (deck) => {
   return await DeckModel.create(deck);
 };
-exports.getDeckById = async (id) => {
+
+const getDeckById = async (id) => {
   return await DeckModel.findById(id);
 };
 
-exports.updateDeck = async (id, deck) => {
+const updateDeck = async (id, deck) => {
   return await DeckModel.findByIdAndUpdate(id, deck);
 };
 
-exports.deleteDeck = async (id) => {
+const deleteDeck = async (id) => {
   return await DeckModel.findByIdAndDelete(id);
+};
+
+export default {
+  getAllDecks,
+  createDeck,
+  getDeckById,
+  updateDeck,
+  deleteDeck
 };
