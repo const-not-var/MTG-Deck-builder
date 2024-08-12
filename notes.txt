@@ -2,10 +2,15 @@
 mongodb connection string - 
 mongodb+srv://jamesnbunny98:LRxDfsHf7O4mMIu5@cluster0.7vop46y.mongodb.net/
 
-db.collection.save() method is deprecated. Use db.collection.insertOne() or db.collection.replaceOne() instead.
 
 
 
-create method to use insert-data.js in script.js and test.js 
+
+
+
+
+
+
+
 
 
