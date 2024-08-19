@@ -1,24 +1,6 @@
 import { Schema as _Schema, model } from "mongoose";
 const Schema = _Schema;
 
-// const deckSchema = new Schema({
-//   name: {
-//     type: String,
-//     require: true,
-//   },
-//   body: {
-//     type: String,
-//     require: true,
-//   },
-//   createdAt: {
-//     type: Date,
-//     default: Date.now,
-//   },
-// });
-
-// export default Schema;
-
-
 const deckSchema = new Schema({
   name: {
       type: String,
