@@ -1,3 +1,6 @@
+
+// THIS IS CODE FOR THE GET DECKS FUNCTION. IM TRYING TO SEPERATE PURPOSES ABD PRACTICE USING CALLBACKS PROPERLY
+
 // async function getImgUrl(cardName) {
 //     try {
 //         const response = await fetch(
