@@ -229,7 +229,7 @@ th {
   max-height: 190px;
   float: left;
   width: 8rem;
-  margin: 15px 10px 15px 40px;
+  margin: 15px 10px 30px 40px;
 }
 
 .deck-info {
@@ -257,6 +257,7 @@ th {
 #cardImg {
   height: 300px;
 }
+
 
 /* webkit for scrollbar */
 
