@@ -1,3 +1,10 @@
+//Clicking plus icon to redirect to table page
+function makeDeck() {
+  console.log("I am clicked");
+  // document.getElementById("deckTester").innerText = "I am changed";
+  window.location.replace("/mydecks.html");
+}
+
 // Signup basic input. No validation planned
 function signup() {
   const email = document.getElementById("inputEmail3").value;
@@ -154,6 +161,44 @@ function getDecks() {
   xhttp.send();
 }
 
+
+
+function getDeckById() {
+    // window.location.replace("/mydecks.html")
+
+    fetch("http://localhost:3001/api/decks")
+    .then((response) => {
+        if (!response.ok) {
+            throw new Error("Network response is not ok");
+        }
+        return response.json();
+    })
+    .then(data => {
+        const arrlength = data.data.length;
+
+        
+        // nested loop?
+        // loop through a deck 
+        // loop each component in between each deck?
+
+        // Does it have to load?
+
+
+        for(let i = 0; i < arrlength; i++) {
+        // console.log(arrlength)
+        console.log(data.data[i].deck[0].name);
+        console.log(data.data[i].deck[0].cardPlace);
+        console.log(data.data[i].deck[0].dateAdded);
+        }
+
+    })
+    .catch(error => {
+        console.log(error)
+    })
+
+
+}
+
 //Clicking plus icon to redirect to table page
 // DEck id is optional
 function openDeckPage(deckId) {
@@ -170,3 +215,23 @@ $(document).ready(function () {
   getDecks();
   // console.log( "ready!" );
 });
+
+// function getDeckById() {
+
+//     const xhttp = new XMLHttpRequest();
+
+//     xhttp.onload = function () {
+//         const dbData = JSON.parse(this.response);
+//         const arrLength = dbData.data.length
+
+//         for(let i = 0; i < arrLength; i++) {
+//             console.log(dbData.data[i]._id);
+//         }
+
+
+// }
+// xhttp.open("GET", "http://localhost:3001/api/decks");
+// xhttp.send();
+// };
+
+
