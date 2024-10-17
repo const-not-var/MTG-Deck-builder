@@ -35,3 +35,6 @@ function cardCounter() {
   });
   observer.observe($span, options);
 }
+
+
+// observe click event on deck page with function to load an individual deck

@@ -1,5 +1,3 @@
-
-
 //Clicking plus icon to redirect to table page
 function makeDeck() {
   console.log("I am clicked");
@@ -52,7 +50,17 @@ function renameDecks() {
 // Deleting a specific deck
 function deleteDeck() {
   // console.log("Delete deck");
-  window.confirm("Are you sure you want to delete your deck?");
+  if (window.confirm("Are you sure you want to delete your deck?")) {
+    console.log(deckId);
+    $.ajax({
+      url: "http://localhost:3001/api/decks/" + deckId,
+      type: "DELETE",
+      success: function () {
+        alert("Successfully deleted");
+      },
+    });
+    window.location.replace("/index.html");
+  }
 }
 
 //Saving a specific deck
@@ -82,57 +90,75 @@ function saveDeck() {
       name: card[1],
       dateAdded: card[2],
     });
-    console.log();
   });
-  $.ajax({
-    url: "http://localhost:3001/api/decks",
-    method: "post",
-    contentType: "application/json",
-    data: JSON.stringify(deckData),
-    success: function () {
-      alert(newDeckName + " Saved successfuly");
-    },
-  });
+  console.log(deckId);
+  if(window.confirm( "Are you sure you want to save" + newDeckName + "?")) {
+    $.ajax({
+      url: "http://localhost:3001/api/decks",
+      method: "post",
+      contentType: "application/json",
+      data: JSON.stringify(deckData),
+      success: function () {
+        alert(newDeckName + " Saved successfuly");
+      },
+    });
+    window.location.replace("/index.html");
+  };
+
+
+  // window.location.replace("/index.html");
 }
 
+// getting all decks and putting them on the hoomepage
 function getDecks() {
-    const xhttp = new XMLHttpRequest();
-    xhttp.onload = function () {
-        const allDbData = JSON.parse(this.response);
-        const length = allDbData.data.length;
-        let arrOfDecks = allDbData.data;
+  const xhttp = new XMLHttpRequest();
+  xhttp.onload = function () {
+    const allDbData = JSON.parse(this.response);
+    const length = allDbData.data.length;
+    let arrOfDecks = allDbData.data;
+    // console.log(allDbData);
+    for (let i = 0; i < length; i++) {
+      fetch(
+        "https://api.magicthegathering.io/v1/cards?" +
+          new URLSearchParams({
+            name: arrOfDecks[i].deck[0].name,
+          })
+      )
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Network response is not ok");
+          }
+          return response.json();
+        })
+        .then((data) => {
+          deckBodyref = document.getElementById("pagePlacement");
+          let homeDeckIcon = '<div class="deck-icon deck-load" id="deckIcon">';
+          homeDeckIcon +=
+            '<img src="' +
+            data.cards[0].imageUrl +
+            '" alt="YOUR COMMANDER" class="deck-placement" onclick=openDeckPage("' +
+            arrOfDecks[i]._id +
+            '")></img>';
+          homeDeckIcon +=
+            '<h4 class="card-text deck-info deck-load" id="deckTester">' +
+            arrOfDecks[i].name +
+            "</h4>";
+          homeDeckIcon +=
+            '<h4 class="card-text deck-info deck-load">' +
+            arrOfDecks[i].deck[0].dateAdded +
+            "</h4>";
+          homeDeckIcon += '<h4 class="card-text deck-info deck-load"></h4>';
+          homeDeckIcon += "</div>";
 
-        for(let i = 0; i < length; i++) {
-            fetch(
-                "https://api.magicthegathering.io/v1/cards?" +
-                new URLSearchParams({
-                    name: arrOfDecks[i].deck[0].name,
-                }))
-                .then((response) => {
-                    if (!response.ok) {
-                        throw new Error("Network response is not ok");
-                    }
-                    return response.json();
-                })
-                .then((data) => {
-                        deckBodyref = document.getElementById("pagePlacement");
-
-                        let homeDeckIcon = '<div class="deck-icon deck-load" id="deckIcon">';
-                        homeDeckIcon += '<img src="' + data.cards[0].imageUrl + '" alt="YOUR COMMANDER" class="deck-placement" onclick="getDeckById()"></img>';
-                        homeDeckIcon += '<h4 class="card-text deck-info deck-load" id="deckTester"> '  + arrOfDecks[i].name + '</h4>';
-                        homeDeckIcon += '<h4 class="card-text deck-info deck-load">' + arrOfDecks[i].deck[0].dateAdded + '</h4>';
-                        homeDeckIcon += "</div>";
-                
-                        $(deckBodyref).append(homeDeckIcon);
-                })
-                .catch((error) => {
-                    console.log(error);
-                }
-                );
-        }
-};
-    xhttp.open("GET", "http://localhost:3001/api/decks");
-    xhttp.send();
+          $(deckBodyref).append(homeDeckIcon);
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+    }
+  };
+  xhttp.open("GET", "http://localhost:3001/api/decks");
+  xhttp.send();
 }
 
 
@@ -173,9 +199,39 @@ function getDeckById() {
 
 }
 
-$( document ).ready(function() {
-    getDecks()
-    // console.log( "ready!" );
+//Clicking plus icon to redirect to table page
+// DEck id is optional
+function openDeckPage(deckId) {
+  console.log("I am clicked");
+  if (deckId) {
+    window.location.replace("/mydecks.html?deckId=" + deckId);
+    // console.log(deckId);
+  } else {
+    window.location.replace("/mydecks.html");
+  }
+}
+
+$(document).ready(function () {
+  getDecks();
+  // console.log( "ready!" );
 });
+
+// function getDeckById() {
+
+//     const xhttp = new XMLHttpRequest();
+
+//     xhttp.onload = function () {
+//         const dbData = JSON.parse(this.response);
+//         const arrLength = dbData.data.length
+
+//         for(let i = 0; i < arrLength; i++) {
+//             console.log(dbData.data[i]._id);
+//         }
+
+
+// }
+// xhttp.open("GET", "http://localhost:3001/api/decks");
+// xhttp.send();
+// };
 
 
