@@ -1,6 +1,7 @@
 //Clicking plus icon to redirect to table page
 function makeDeck() {
   console.log("I am clicked");
+  // document.getElementById("deckTester").innerText = "I am changed";
   window.location.replace("/mydecks.html");
 }
 
@@ -35,8 +36,9 @@ function renameDecks() {
   if (userInput.length < 1) {
     return alert("Deck name can't be blank!");
   }
+  // console.log(userInput);
   $("#deckTableId").find("#deckName").text(userInput);
-
+  // console.log(deckNames);
   const myModal = document.getElementById("exampleModal");
   const myInput = document.getElementById("myInput");
 
@@ -47,7 +49,7 @@ function renameDecks() {
 
 // Deleting a specific deck
 function deleteDeck() {
-
+  // console.log("Delete deck");
   if (window.confirm("Are you sure you want to delete your deck?")) {
     console.log(deckId);
     $.ajax({
@@ -69,7 +71,7 @@ function saveDeck() {
     deck: [],
   };
 
-
+  // console.log(newDeckName);
   let tableData = [];
   $("#deckTableId tr").each(function () {
     let rowData = [];
@@ -107,7 +109,7 @@ function saveDeck() {
   // window.location.replace("/index.html");
 }
 
-// getting all decks and putting them on the homepage
+// getting all decks and putting them on the hoomepage
 function getDecks() {
   const xhttp = new XMLHttpRequest();
   xhttp.onload = function () {
