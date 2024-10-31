@@ -25,7 +25,6 @@ function cardCounter() {
   observer.disconnect();
   let counter = 0;
   $("#deckTableId tr").each(function () {
-    // console.log($(this))
     $(this)
       .find("#tableNumber")
       .each(function () {
