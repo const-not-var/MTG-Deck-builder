@@ -54,7 +54,6 @@ function addCard(card) {
           'onClick="delCard(this)"' +
           ' alt="A red X" class="x-icon"></button></td>';
         cardRow += "</tr>";
-        // console.log(`${data.cards[0].imageUrl}`)
         tbodyRef = document.getElementById("myTable");
         $(tbodyRef).append(cardRow);
         document.getElementById("datalistOptions").innerHTML = "";
@@ -91,7 +90,6 @@ function fetchReq(event, searchBox) {
       })
       .then((data) => {
         const currentOptions = document.getElementById("datalistOptions");
-        // console.log(currentOptions)
         currentOptions.innerHTML = "";
         const cardArr = [];
         data.cards.forEach((card) => {
@@ -172,7 +170,6 @@ function popDeckTable() {
           const tds = document.querySelectorAll("td");
           tds.forEach((td) => {
             if (name_val === td.innerText) {
-              // console.log(td);
               td.setAttribute(
                 "data-bs-content",
                 `<img id="cardImg" src="${data.cards[0].imageUrl}">`
@@ -198,6 +195,4 @@ function popDeckTable() {
 $(document).ready(function () {
   createVariables();
   popDeckTable();
-  // getCardImg();
-  // console.log( "ready!" );
 });

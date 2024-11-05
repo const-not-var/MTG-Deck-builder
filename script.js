@@ -1,7 +1,6 @@
 //Clicking plus icon to redirect to table page
 function makeDeck() {
   console.log("I am clicked");
-  // document.getElementById("deckTester").innerText = "I am changed";
   window.location.replace("/mydecks.html");
 }
 
@@ -36,9 +35,7 @@ function renameDecks() {
   if (userInput.length < 1) {
     return alert("Deck name can't be blank!");
   }
-  // console.log(userInput);
   $("#deckTableId").find("#deckName").text(userInput);
-  // console.log(deckNames);
   const myModal = document.getElementById("exampleModal");
   const myInput = document.getElementById("myInput");
 
@@ -49,7 +46,6 @@ function renameDecks() {
 
 // Deleting a specific deck
 function deleteDeck() {
-  // console.log("Delete deck");
   if (window.confirm("Are you sure you want to delete your deck?")) {
     console.log(deckId);
     $.ajax({
@@ -104,9 +100,6 @@ function saveDeck() {
     });
     window.location.replace("/index.html");
   };
-
-
-  // window.location.replace("/index.html");
 }
 
 // getting all decks and putting them on the hoomepage
@@ -116,7 +109,7 @@ function getDecks() {
     const allDbData = JSON.parse(this.response);
     const length = allDbData.data.length;
     let arrOfDecks = allDbData.data;
-    // console.log(allDbData);
+
     for (let i = 0; i < length; i++) {
       fetch(
         "https://api.magicthegathering.io/v1/cards?" +
@@ -164,7 +157,6 @@ function getDecks() {
 
 
 function getDeckById() {
-    // window.location.replace("/mydecks.html")
 
     fetch("http://localhost:3001/api/decks")
     .then((response) => {
@@ -200,12 +192,11 @@ function getDeckById() {
 }
 
 //Clicking plus icon to redirect to table page
-// DEck id is optional
+// Deck id is optional
 function openDeckPage(deckId) {
   console.log("I am clicked");
   if (deckId) {
     window.location.replace("/mydecks.html?deckId=" + deckId);
-    // console.log(deckId);
   } else {
     window.location.replace("/mydecks.html");
   }
@@ -213,7 +204,6 @@ function openDeckPage(deckId) {
 
 $(document).ready(function () {
   getDecks();
-  // console.log( "ready!" );
 });
 
 // function getDeckById() {

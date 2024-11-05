@@ -19,8 +19,6 @@ const mongoURI =
   "mongodb://jamesnbunny98:LRxDfsHf7O4mMIu5@ac-n4pmsts-shard-00-00.7vop46y.mongodb.net:27017,ac-n4pmsts-shard-00-01.7vop46y.mongodb.net:27017,ac-n4pmsts-shard-00-02.7vop46y.mongodb.net:27017/?replicaSet=atlas-ktjsym-shard-0&ssl=true&authSource=admin&retryWrites=true&w=majority&appName=Cluster0";
 mongoose
   .connect(mongoURI, {
-    // useNewUrlParser: true,
-    // useUnifiedTopology: true,
     dbName: "mtg-deck-builder",
   })
   .then(() => console.log("MongoDB connected successfully via Mongoose"))
