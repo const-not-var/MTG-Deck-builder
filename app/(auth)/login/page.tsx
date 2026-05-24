@@ -33,8 +33,18 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "linear-gradient(135deg, #09090b 0%, #0f0f1a 100%)" }}>
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen relative flex items-center justify-center px-4">
+      {/* MTG background art */}
+      <div className="absolute inset-0 z-0">
+        <img
+          src="https://cards.scryfall.io/art_crop/front/4/a/4a1f905f-1d55-4d02-9d24-e58070793d3f.jpg?1717951088"
+          alt=""
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(9,9,11,0.85) 0%, rgba(15,15,26,0.75) 100%)" }} />
+      </div>
+
+      <div className="relative z-10 w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-4">
@@ -44,7 +54,7 @@ export default function LoginPage() {
           <p className="text-sm text-zinc-500 mt-1">Sign in to your account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="rounded-2xl p-6 space-y-4" style={{ background: "rgba(9,9,11,0.75)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(16px)" }}>
           {error && (
             <div className="flex items-center gap-2 text-sm text-red-400 bg-red-950/40 border border-red-900/50 rounded-lg px-3 py-2.5">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
