@@ -13,7 +13,7 @@ export function Navbar({ userName }: NavbarProps) {
   const path = usePathname()
 
   return (
-    <header className="sticky top-0 z-40 bg-zinc-900/95 backdrop-blur border-b border-zinc-800">
+    <header className="sticky top-0 z-40 bg-black border-b border-zinc-900">
       <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
         <Link href="/decks" className="flex items-center gap-2 font-bold text-amber-400 text-lg tracking-tight hover:text-amber-300 transition-colors">
           <Layers className="w-5 h-5" />

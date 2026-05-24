@@ -49,35 +49,38 @@ export function DecksClient({ userName }: Props) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar userName={userName} />
-
-      {/* Hero banner */}
-      <div className="relative h-48 overflow-hidden">
+    <div className="min-h-screen flex flex-col relative">
+      {/* Full-page MTG background */}
+      <div className="fixed inset-0 z-0">
         <img
           src="https://cards.scryfall.io/art_crop/front/4/a/4a1f905f-1d55-4d02-9d24-e58070793d3f.jpg?1717951088"
           alt=""
           className="w-full h-full object-cover object-center"
         />
-        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(9,9,11,0.3) 0%, rgba(9,9,11,0.9) 100%)" }} />
-        <div className="absolute inset-0 flex items-end px-8 pb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-white drop-shadow-lg">My Decks</h1>
-            <p className="text-sm text-zinc-300 mt-1 drop-shadow">
-              {loading ? "Loading…" : `${decks.length} deck${decks.length !== 1 ? "s" : ""}`}
-            </p>
-          </div>
-          <button
-            onClick={() => { setShowNewModal(true); setNewDeckName(""); setCreateError("") }}
-            className="ml-auto flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-zinc-950 font-semibold text-sm hover:bg-amber-400 transition-colors shadow-lg"
-          >
-            <Plus className="w-4 h-4" />
-            New Deck
-          </button>
-        </div>
+        <div className="absolute inset-0" style={{ background: "rgba(9,9,11,0.72)" }} />
       </div>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-8">
+      <div className="relative z-10 flex flex-col min-h-screen">
+      <Navbar userName={userName} />
+
+      {/* Page header */}
+      <div className="max-w-7xl mx-auto w-full px-8 pt-8 pb-4 flex items-end justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white">My Decks</h1>
+          <p className="text-sm text-zinc-400 mt-1">
+            {loading ? "Loading…" : `${decks.length} deck${decks.length !== 1 ? "s" : ""}`}
+          </p>
+        </div>
+        <button
+          onClick={() => { setShowNewModal(true); setNewDeckName(""); setCreateError("") }}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-zinc-950 font-semibold text-sm hover:bg-amber-400 transition-colors shadow-lg"
+        >
+          <Plus className="w-4 h-4" />
+          New Deck
+        </button>
+      </div>
+
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-4">
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
@@ -154,6 +157,7 @@ export function DecksClient({ userName }: Props) {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }
