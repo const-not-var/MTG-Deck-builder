@@ -26,6 +26,13 @@ export interface ScryfallCard {
   power?: string
   toughness?: string
   loyalty?: string
+  set_name?: string
+  set?: string
+  collector_number?: string
+  lang?: string
+  foil?: boolean
+  nonfoil?: boolean
+  released_at?: string
 }
 
 export interface CardInDeck {

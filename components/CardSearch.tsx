@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { Search, Loader2, Plus } from "lucide-react"
+import { Search, Loader2, Plus, ChevronLeft } from "lucide-react"
 import type { ScryfallCard } from "@/types"
 import { ManaCost } from "./ManaSymbol"
 
@@ -10,28 +10,41 @@ interface Props {
   placeholder?: string
 }
 
+function getImage(card: ScryfallCard, size: "small" | "normal" = "small"): string {
+  if (card.image_uris?.[size]) return card.image_uris[size]
+  if (card.card_faces?.[0]?.image_uris?.[size]) return card.card_faces[0].image_uris[size]
+  return ""
+}
+
 export function CardSearch({ onCardSelect, placeholder = "Search for a card…" }: Props) {
   const [query, setQuery] = useState("")
   const [names, setNames] = useState<string[]>([])
-  const [loading, setLoading] = useState(false)
-  const [loadingCard, setLoadingCard] = useState<string | null>(null)
+  const [searching, setSearching] = useState(false)
   const [open, setOpen] = useState(false)
+
+  // Printing picker state
+  const [printings, setPrintings] = useState<ScryfallCard[]>([])
+  const [selectedName, setSelectedName] = useState<string | null>(null)
+  const [loadingPrintings, setLoadingPrintings] = useState(false)
+
+  // Hover preview
   const [hoveredCard, setHoveredCard] = useState<ScryfallCard | null>(null)
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 })
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const search = useCallback(async (q: string) => {
     if (q.length < 2) { setNames([]); return }
-    setLoading(true)
+    setSearching(true)
     try {
       const res = await fetch(`/api/cards/search?q=${encodeURIComponent(q)}`)
       const data = await res.json()
       setNames(data.names ?? [])
       setOpen(true)
     } finally {
-      setLoading(false)
+      setSearching(false)
     }
   }, [])
 
@@ -44,29 +57,41 @@ export function CardSearch({ onCardSelect, placeholder = "Search for a card…" 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (!dropdownRef.current?.contains(e.target as Node) && !inputRef.current?.contains(e.target as Node)) {
-        setOpen(false)
-        setHoveredCard(null)
+        closeAll()
       }
     }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
   }, [])
 
-  const handleSelect = async (name: string) => {
-    setLoadingCard(name)
+  const closeAll = () => {
     setOpen(false)
-    setQuery("")
-    setNames([])
+    setSelectedName(null)
+    setPrintings([])
+    setHoveredCard(null)
+  }
+
+  const handleSelectName = async (name: string) => {
+    setSelectedName(name)
+    setLoadingPrintings(true)
+    setPrintings([])
     try {
-      const res = await fetch(`/api/cards/search?q=${encodeURIComponent(name)}&full=1`)
+      const res = await fetch(`/api/cards/printings?name=${encodeURIComponent(name)}`)
       const data = await res.json()
-      if (data.card) onCardSelect(data.card)
+      setPrintings(data.printings ?? [])
     } finally {
-      setLoadingCard(null)
+      setLoadingPrintings(false)
     }
   }
 
-  const handleHover = async (name: string, e: React.MouseEvent) => {
+  const handleSelectPrinting = (card: ScryfallCard) => {
+    onCardSelect(card)
+    setQuery("")
+    setNames([])
+    closeAll()
+  }
+
+  const handleHoverName = async (name: string, e: React.MouseEvent) => {
     setHoverPos({ x: e.clientX, y: e.clientY })
     if (hoveredCard?.name === name) return
     const res = await fetch(`/api/cards/search?q=${encodeURIComponent(name)}&full=1`)
@@ -74,11 +99,7 @@ export function CardSearch({ onCardSelect, placeholder = "Search for a card…" 
     if (data.card) setHoveredCard(data.card)
   }
 
-  const getImageUri = (card: ScryfallCard) => {
-    if (card.image_uris?.normal) return card.image_uris.normal
-    if (card.card_faces?.[0]?.image_uris?.normal) return card.card_faces[0].image_uris.normal
-    return ""
-  }
+  const showingPrintings = selectedName !== null
 
   return (
     <div className="relative">
@@ -87,45 +108,116 @@ export function CardSearch({ onCardSelect, placeholder = "Search for a card…" 
         <input
           ref={inputRef}
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => names.length > 0 && setOpen(true)}
+          onChange={(e) => { setQuery(e.target.value); setSelectedName(null); setPrintings([]) }}
+          onFocus={() => (names.length > 0 || showingPrintings) && setOpen(true)}
           placeholder={placeholder}
           className="w-full pl-9 pr-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition-colors"
         />
-        {loading && (
+        {searching && (
           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 animate-spin" />
         )}
       </div>
 
-      {loadingCard && (
-        <div className="mt-1.5 text-xs text-zinc-500 flex items-center gap-1.5 px-1">
-          <Loader2 className="w-3 h-3 animate-spin" />
-          Fetching {loadingCard}…
-        </div>
-      )}
-
-      {open && names.length > 0 && (
+      {open && (names.length > 0 || showingPrintings) && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 top-full mt-1 w-full bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl overflow-hidden"
+          className="absolute z-50 top-full mt-1 w-full bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl overflow-hidden"
+          style={{ minWidth: "260px" }}
         >
-          {names.map((name) => (
+          {/* ── Name list ── */}
+          {!showingPrintings && names.map((name) => (
             <button
               key={name}
-              onMouseEnter={(e) => handleHover(name, e)}
+              onMouseEnter={(e) => handleHoverName(name, e)}
               onMouseLeave={() => setHoveredCard(null)}
-              onClick={() => handleSelect(name)}
+              onClick={() => handleSelectName(name)}
               className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors text-left group"
             >
-              <Plus className="w-3.5 h-3.5 text-zinc-600 group-hover:text-amber-400 flex-shrink-0 transition-colors" />
+              <ChevronLeft className="w-3.5 h-3.5 text-zinc-600 group-hover:text-amber-400 rotate-180 flex-shrink-0 transition-colors" />
               <span className="truncate">{name}</span>
             </button>
           ))}
+
+          {/* ── Printing picker ── */}
+          {showingPrintings && (
+            <>
+              {/* Header */}
+              <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800">
+                <button
+                  onClick={() => { setSelectedName(null); setPrintings([]) }}
+                  className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-100 transition-colors"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  Back
+                </button>
+                <span className="text-xs font-medium text-zinc-300 truncate">{selectedName}</span>
+              </div>
+
+              {loadingPrintings && (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
+                </div>
+              )}
+
+              {/* Printings list */}
+              <div className="max-h-72 overflow-y-auto">
+                {printings.map((card) => {
+                  const img = getImage(card, "small")
+                  const price = card.prices?.usd
+                  const foilPrice = card.prices?.usd_foil
+
+                  return (
+                    <button
+                      key={card.id}
+                      onClick={() => handleSelectPrinting(card)}
+                      onMouseEnter={(e) => { setHoverPos({ x: e.clientX, y: e.clientY }); setHoveredCard(card) }}
+                      onMouseLeave={() => setHoveredCard(null)}
+                      className="w-full flex items-center gap-3 px-3 py-2 hover:bg-zinc-800 transition-colors text-left group"
+                    >
+                      {/* Card thumbnail */}
+                      <div className="flex-shrink-0 w-8 h-11 rounded-sm overflow-hidden bg-zinc-800 border border-zinc-700">
+                        {img && <img src={img} alt="" className="w-full h-full object-cover object-top" />}
+                      </div>
+
+                      {/* Set info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-zinc-200 truncate">{card.set_name}</p>
+                        <p className="text-[10px] text-zinc-500 mt-0.5">
+                          #{card.collector_number} · {card.lang?.toUpperCase() ?? "EN"}
+                          {card.foil && !card.nonfoil ? " · Foil only" : ""}
+                        </p>
+                      </div>
+
+                      {/* Prices */}
+                      <div className="flex-shrink-0 text-right">
+                        {price ? (
+                          <p className="text-xs font-semibold text-green-400">${price}</p>
+                        ) : foilPrice ? (
+                          <p className="text-xs font-semibold text-blue-400">${foilPrice} ✦</p>
+                        ) : (
+                          <p className="text-xs text-zinc-600">—</p>
+                        )}
+                        {price && foilPrice && (
+                          <p className="text-[10px] text-blue-400/70">${foilPrice} ✦</p>
+                        )}
+                      </div>
+
+                      <Plus className="w-3.5 h-3.5 text-zinc-600 group-hover:text-amber-400 flex-shrink-0 transition-colors" />
+                    </button>
+                  )
+                })}
+              </div>
+
+              {!loadingPrintings && printings.length === 0 && (
+                <p className="text-xs text-zinc-500 text-center py-4">No printings found.</p>
+              )}
+            </>
+          )}
         </div>
       )}
 
       {/* Card hover preview */}
-      {hoveredCard && getImageUri(hoveredCard) && (
+      {hoveredCard && getImage(hoveredCard, "normal") && (
         <div
           className="fixed z-[100] pointer-events-none"
           style={{
@@ -134,10 +226,10 @@ export function CardSearch({ onCardSelect, placeholder = "Search for a card…" 
           }}
         >
           <div className="bg-zinc-900 rounded-xl overflow-hidden shadow-2xl border border-zinc-700 w-52">
-            <img src={getImageUri(hoveredCard)} alt={hoveredCard.name} className="w-full" />
+            <img src={getImage(hoveredCard, "normal")} alt={hoveredCard.name} className="w-full" />
             <div className="px-3 py-2">
               {hoveredCard.mana_cost && <ManaCost cost={hoveredCard.mana_cost} />}
-              <p className="text-xs text-zinc-400 mt-1 leading-tight line-clamp-3">{hoveredCard.type_line}</p>
+              <p className="text-xs text-zinc-400 mt-1 leading-tight">{hoveredCard.type_line}</p>
               {hoveredCard.prices?.usd && (
                 <p className="text-xs text-green-400 mt-1">${hoveredCard.prices.usd}</p>
               )}
