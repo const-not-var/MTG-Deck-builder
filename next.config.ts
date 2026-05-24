@@ -1,7 +1,21 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
-  /* config options here */
-};
+  turbopack: {
+    root: __dirname,
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "cards.scryfall.io",
+      },
+      {
+        protocol: "https",
+        hostname: "*.scryfall.io",
+      },
+    ],
+  },
+}
 
-export default nextConfig;
+export default nextConfig
