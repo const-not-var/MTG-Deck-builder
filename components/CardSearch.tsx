@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react"
 import { Search, Loader2, Plus, ChevronLeft } from "lucide-react"
 import type { ScryfallCard } from "@/types"
 import { ManaCost } from "./ManaSymbol"
+import { HoloCard } from "./HoloCard"
 
 interface Props {
   onCardSelect: (card: ScryfallCard) => void
@@ -233,7 +234,12 @@ export function CardSearch({ onCardSelect, placeholder = "Search for a card…" 
           }}
         >
           <div className="bg-zinc-900 rounded-xl overflow-hidden shadow-2xl border border-zinc-700 w-52">
-            <img src={getImage(hoveredCard, "normal")} alt={hoveredCard.name} className="w-full" />
+            <HoloCard
+              src={getImage(hoveredCard, "normal")}
+              alt={hoveredCard.name}
+              imgStyle={{ borderRadius: "5%" }}
+              imgClassName="w-full"
+            />
             <div className="px-3 py-2">
               {hoveredCard.mana_cost && <ManaCost cost={hoveredCard.mana_cost} />}
               <p className="text-xs text-zinc-400 mt-1 leading-tight">{hoveredCard.type_line}</p>

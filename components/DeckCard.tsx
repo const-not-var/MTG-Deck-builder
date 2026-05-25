@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { Crown, Swords, DollarSign } from "lucide-react"
 import type { Deck } from "@/types"
+import { HoloCard } from "./HoloCard"
 
 interface DeckCardProps {
   deck: Deck
@@ -21,11 +22,11 @@ export function DeckCard({ deck }: DeckCardProps) {
         {/* Full card image — overflows the container on hover */}
         <div className="relative bg-zinc-900 rounded-t-xl" style={{ aspectRatio: "5/7" }}>
           {commander?.imageUri ? (
-            <img
+            <HoloCard
               src={commander.imageUri}
               alt={commander.name}
-              className="w-full h-full object-contain transition-all duration-300 group-hover:scale-110 group-hover:-translate-y-3 group-hover:drop-shadow-[0_16px_32px_rgba(0,0,0,0.9)]"
-              style={{ borderRadius: "5%" }}
+              className="w-full h-full transition-all duration-300 group-hover:scale-110 group-hover:-translate-y-3 group-hover:drop-shadow-[0_16px_32px_rgba(0,0,0,0.9)]"
+              imgStyle={{ borderRadius: "5%" }}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
