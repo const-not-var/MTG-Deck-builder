@@ -33,8 +33,16 @@ export function CardSearch({ onCardSelect, placeholder = "Search for a card…" 
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 })
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hideRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  const scheduleHide = () => {
+    hideRef.current = setTimeout(() => setHoveredCard(null), 120)
+  }
+  const cancelHide = () => {
+    if (hideRef.current) clearTimeout(hideRef.current)
+  }
 
   const search = useCallback(async (q: string) => {
     if (q.length < 2) { setNames([]); return }
@@ -129,8 +137,8 @@ export function CardSearch({ onCardSelect, placeholder = "Search for a card…" 
           {!showingPrintings && names.map((name) => (
             <button
               key={name}
-              onMouseEnter={(e) => handleHoverName(name, e)}
-              onMouseLeave={() => setHoveredCard(null)}
+              onMouseEnter={(e) => { cancelHide(); handleHoverName(name, e) }}
+              onMouseLeave={scheduleHide}
               onClick={() => handleSelectName(name)}
               className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors text-left group"
             >
@@ -176,8 +184,8 @@ export function CardSearch({ onCardSelect, placeholder = "Search for a card…" 
                     <button
                       key={card.id}
                       onClick={() => handleSelectPrinting(card)}
-                      onMouseEnter={(e) => { setHoverPos({ x: e.clientX, y: e.clientY }); setHoveredCard(card) }}
-                      onMouseLeave={() => setHoveredCard(null)}
+                      onMouseEnter={(e) => { cancelHide(); setHoverPos({ x: e.clientX, y: e.clientY }); setHoveredCard(card) }}
+                      onMouseLeave={scheduleHide}
                       className="w-full flex items-center gap-3 px-3 py-2 hover:bg-zinc-800 transition-colors text-left group"
                     >
                       {/* Card thumbnail */}
@@ -233,7 +241,11 @@ export function CardSearch({ onCardSelect, placeholder = "Search for a card…" 
             top: Math.max(hoverPos.y - 100, 8),
           }}
         >
-          <div className="bg-zinc-900 rounded-xl overflow-hidden shadow-2xl border border-zinc-700 w-52">
+          <div
+            className="bg-zinc-900 rounded-xl overflow-hidden shadow-2xl border border-zinc-700 w-52 pointer-events-auto"
+            onMouseEnter={cancelHide}
+            onMouseLeave={() => setHoveredCard(null)}
+          >
             <HoloCard
               src={getImage(hoveredCard, "normal")}
               alt={hoveredCard.name}

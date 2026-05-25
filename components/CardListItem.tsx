@@ -4,7 +4,6 @@ import { useState } from "react"
 import { X, Crown, CircleSlash } from "lucide-react"
 import type { CardInDeck } from "@/types"
 import { ManaCost } from "./ManaSymbol"
-import { HoloCard } from "./HoloCard"
 
 interface Props {
   card: CardInDeck
@@ -37,12 +36,11 @@ export function CardListItem({ card, onRemove, onToggleCommander, commanderColor
         onMouseLeave={() => setShowPreview(false)}
       >
         {card.imageUri && !imgError ? (
-          <HoloCard
+          <img
             src={card.imageUri}
             alt={card.name}
-            className="w-8 h-11 rounded-sm border border-zinc-700 overflow-hidden"
-            imgClassName="object-cover object-top"
-            imgStyle={{ borderRadius: "2px" }}
+            onError={() => setImgError(true)}
+            className="w-8 h-11 object-cover object-top rounded-sm border border-zinc-700"
           />
         ) : (
           <div className="w-8 h-11 bg-zinc-700 rounded-sm border border-zinc-700 flex items-center justify-center">
