@@ -6,7 +6,7 @@ export async function GET(req: Request) {
   if (!name) return NextResponse.json({ printings: [] })
 
   const res = await fetch(
-    `https://api.scryfall.com/cards/search?q=!"${encodeURIComponent(name)}"&unique=prints&order=released&dir=desc`,
+    `https://api.scryfall.com/cards/search?q=!"${encodeURIComponent(name)}"+game:paper&unique=prints&order=usd&dir=asc`,
     { next: { revalidate: 3600 } }
   )
   if (!res.ok) return NextResponse.json({ printings: [] })
