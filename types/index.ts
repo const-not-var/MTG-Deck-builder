@@ -19,6 +19,8 @@ export interface ScryfallCard {
   prices: {
     usd: string | null
     usd_foil: string | null
+    eur: string | null
+    eur_foil: string | null
   }
   legalities: {
     commander: string

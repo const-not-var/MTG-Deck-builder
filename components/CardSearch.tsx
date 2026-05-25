@@ -165,6 +165,11 @@ export function CardSearch({ onCardSelect, placeholder = "Search for a card…" 
                   const img = getImage(card, "small")
                   const price = card.prices?.usd
                   const foilPrice = card.prices?.usd_foil
+                  const eurPrice = card.prices?.eur
+                  const eurFoilPrice = card.prices?.eur_foil
+                  // Fall back to EUR when no USD price exists
+                  const fallbackEur = !price && !foilPrice ? (eurPrice || eurFoilPrice) : null
+                  const fallbackEurIsFoil = !eurPrice && !!eurFoilPrice
 
                   return (
                     <button
@@ -194,6 +199,8 @@ export function CardSearch({ onCardSelect, placeholder = "Search for a card…" 
                           <p className="text-xs font-semibold text-green-400">${price}</p>
                         ) : foilPrice ? (
                           <p className="text-xs font-semibold text-blue-400">${foilPrice} ✦</p>
+                        ) : fallbackEur ? (
+                          <p className="text-xs font-semibold text-zinc-400">€{fallbackEur}{fallbackEurIsFoil ? " ✦" : ""}</p>
                         ) : (
                           <p className="text-xs text-zinc-600">—</p>
                         )}

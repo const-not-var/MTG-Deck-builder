@@ -14,19 +14,31 @@ export async function GET(req: Request) {
   const data = await res.json()
   const cards = data.data ?? []
 
-  // Sort: priced cards (cheapest USD first), then foil-only, then no price
+  // Sort: USD priced first (cheapest), then EUR-only, then no price at all
+  const getPrice = (c: { prices?: { usd?: string | null; usd_foil?: string | null; eur?: string | null; eur_foil?: string | null } }) => {
+    const usd = c.prices?.usd ? parseFloat(c.prices.usd) : null
+    const usdFoil = c.prices?.usd_foil ? parseFloat(c.prices.usd_foil) : null
+    return usd ?? usdFoil ?? null
+  }
+  const hasUsd = (c: typeof cards[0]) => !!(c.prices?.usd || c.prices?.usd_foil)
+  const hasAnyPrice = (c: typeof cards[0]) => !!(c.prices?.usd || c.prices?.usd_foil || c.prices?.eur || c.prices?.eur_foil)
+
   const sorted = [...cards].sort((a, b) => {
-    const aUsd = a.prices?.usd ? parseFloat(a.prices.usd) : null
-    const bUsd = b.prices?.usd ? parseFloat(b.prices.usd) : null
-    const aFoil = a.prices?.usd_foil ? parseFloat(a.prices.usd_foil) : null
-    const bFoil = b.prices?.usd_foil ? parseFloat(b.prices.usd_foil) : null
+    const aHasUsd = hasUsd(a)
+    const bHasUsd = hasUsd(b)
+    const aHasAny = hasAnyPrice(a)
+    const bHasAny = hasAnyPrice(b)
 
-    const aPrice = aUsd ?? aFoil
-    const bPrice = bUsd ?? bFoil
+    // USD priced before EUR-only before no price
+    if (aHasUsd && !bHasUsd) return -1
+    if (!aHasUsd && bHasUsd) return 1
+    if (aHasAny && !bHasAny) return -1
+    if (!aHasAny && bHasAny) return 1
 
-    if (aPrice !== null && bPrice !== null) return aPrice - bPrice
-    if (aPrice !== null) return -1
-    if (bPrice !== null) return 1
+    // Within USD-priced group, sort cheapest first
+    const aP = getPrice(a)
+    const bP = getPrice(b)
+    if (aP !== null && bP !== null) return aP - bP
     return 0
   })
 
