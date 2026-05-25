@@ -22,7 +22,7 @@ interface Props {
 
 export function DeckStats({ cards, validation }: Props) {
   const totalPrice = cards.reduce((s, c) => {
-    const p = parseFloat(c.prices?.usd ?? "0")
+    const p = parseFloat(c.prices?.usd ?? c.prices?.usdFoil ?? "0")
     return s + (isNaN(p) ? 0 : p * c.quantity)
   }, 0)
 

@@ -294,7 +294,7 @@ export function DeckEditor({ deckId }: Props) {
               if (sectionCards.length === 0) return null
               const sectionTotal = sectionCards.reduce((s, c) => s + c.quantity, 0)
               const sectionPrice = sectionCards.reduce((s, c) => {
-                const p = parseFloat(c.prices?.usd ?? "0")
+                const p = parseFloat(c.prices?.usd ?? c.prices?.usdFoil ?? "0")
                 return s + (isNaN(p) ? 0 : p * c.quantity)
               }, 0)
 

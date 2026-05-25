@@ -66,9 +66,11 @@ export function CardListItem({ card, onRemove, onToggleCommander, commanderColor
         </div>
         <div className="flex items-center gap-2 mt-0.5">
           <span className="text-[10px] text-zinc-500 truncate">{card.typeLine.split(" — ")[0]}</span>
-          {card.prices?.usd && (
+          {card.prices?.usd ? (
             <span className="text-[10px] text-green-400/80 flex-shrink-0">${card.prices.usd}</span>
-          )}
+          ) : card.prices?.usdFoil ? (
+            <span className="text-[10px] text-blue-400/80 flex-shrink-0">${card.prices.usdFoil} ✦</span>
+          ) : null}
         </div>
       </div>
 
