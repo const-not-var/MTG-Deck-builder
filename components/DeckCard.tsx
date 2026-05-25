@@ -17,14 +17,14 @@ export function DeckCard({ deck }: DeckCardProps) {
 
   return (
     <Link href={`/decks/${deck._id}`} className="group block">
-      <div className="overflow-hidden rounded-xl bg-zinc-900 border border-zinc-800 hover:border-amber-500/50 transition-all duration-200 hover:shadow-lg hover:shadow-amber-500/5">
+      <div className="overflow-hidden rounded-xl bg-zinc-900 border border-zinc-800">
         {/* Full card image */}
-        <div className="relative bg-zinc-900" style={{ aspectRatio: "5/7" }}>
+        <div className="relative bg-zinc-900 overflow-hidden" style={{ aspectRatio: "5/7" }}>
           {commander?.imageUri ? (
             <img
               src={commander.imageUri}
               alt={commander.name}
-              className="w-full h-full object-contain"
+              className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105 group-hover:drop-shadow-[0_8px_24px_rgba(0,0,0,0.8)]"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
