@@ -24,8 +24,8 @@ export function HoloCard({ src, alt, className = "", imgStyle, imgClassName = ""
     const y = (e.clientY - rect.top)  / rect.height  // 0..1
 
     // 3-D tilt toward the cursor
-    const rx = (0.5 - y) * 24
-    const ry = (x - 0.5) * 24
+    const rx = (0.5 - y) * 12
+    const ry = (x - 0.5) * 12
     wrap.style.transform = `perspective(600px) rotateX(${rx}deg) rotateY(${ry}deg)`
 
     // Shift the hue so the rainbow rotates as you move
@@ -36,16 +36,16 @@ export function HoloCard({ src, alt, className = "", imgStyle, imgClassName = ""
     foil.style.opacity = "1"
     foil.style.backgroundImage = [
       // specular glare follows cursor
-      `radial-gradient(circle at ${px}% ${py}%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.1) 30%, transparent 60%)`,
+      `radial-gradient(circle at ${px}% ${py}%, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 35%, transparent 65%)`,
       // rotating rainbow bands
       `linear-gradient(${hue}deg,
-        hsla(${hue +   0}, 100%, 60%, 0.5),
-        hsla(${hue +  60}, 100%, 60%, 0.5),
-        hsla(${hue + 120}, 100%, 60%, 0.5),
-        hsla(${hue + 180}, 100%, 60%, 0.5),
-        hsla(${hue + 240}, 100%, 60%, 0.5),
-        hsla(${hue + 300}, 100%, 60%, 0.5),
-        hsla(${hue + 360}, 100%, 60%, 0.5)
+        hsla(${hue +   0}, 100%, 60%, 0.2),
+        hsla(${hue +  60}, 100%, 60%, 0.2),
+        hsla(${hue + 120}, 100%, 60%, 0.2),
+        hsla(${hue + 180}, 100%, 60%, 0.2),
+        hsla(${hue + 240}, 100%, 60%, 0.2),
+        hsla(${hue + 300}, 100%, 60%, 0.2),
+        hsla(${hue + 360}, 100%, 60%, 0.2)
       )`,
     ].join(",")
   }
