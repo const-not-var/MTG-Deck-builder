@@ -19,7 +19,7 @@ export function DeckCard({ deck }: DeckCardProps) {
     <Link href={`/decks/${deck._id}`} className="group block">
       <div className="overflow-hidden rounded-xl bg-zinc-900 border border-zinc-800 hover:border-amber-500/50 transition-all duration-200 hover:shadow-lg hover:shadow-amber-500/5">
         {/* Full card image */}
-        <div className="bg-zinc-800" style={{ aspectRatio: "5/7" }}>
+        <div className="relative bg-zinc-900" style={{ aspectRatio: "5/7" }}>
           {commander?.imageUri ? (
             <img
               src={commander.imageUri}
@@ -31,6 +31,8 @@ export function DeckCard({ deck }: DeckCardProps) {
               <Swords className="w-12 h-12 text-zinc-700" />
             </div>
           )}
+          {/* Gradient fade into info section */}
+          <div className="absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-zinc-900 to-transparent" />
         </div>
 
         {/* Info */}
