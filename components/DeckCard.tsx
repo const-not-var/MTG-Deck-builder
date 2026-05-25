@@ -24,7 +24,8 @@ export function DeckCard({ deck }: DeckCardProps) {
             <img
               src={commander.imageUri}
               alt={commander.name}
-              className="w-full h-full object-contain rounded-t-xl transition-all duration-300 group-hover:scale-110 group-hover:-translate-y-3 group-hover:drop-shadow-[0_16px_32px_rgba(0,0,0,0.9)]"
+              className="w-full h-full object-contain transition-all duration-300 group-hover:scale-110 group-hover:-translate-y-3 group-hover:drop-shadow-[0_16px_32px_rgba(0,0,0,0.9)]"
+              style={{ borderRadius: "5%" }}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
