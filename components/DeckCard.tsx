@@ -32,8 +32,8 @@ export function DeckCard({ deck }: DeckCardProps) {
               <Swords className="w-12 h-12 text-zinc-700" />
             </div>
           )}
-          {/* Gradient fade into info section */}
-          <div className="absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-zinc-900 to-transparent pointer-events-none" />
+          {/* Gradient fade into info section — hidden when card lifts */}
+          <div className="absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-zinc-900 to-transparent pointer-events-none transition-opacity duration-300 group-hover:opacity-0" />
         </div>
 
         {/* Info */}
