@@ -88,6 +88,8 @@ export function DeckEditor({ deckId }: Props) {
       }
     }
 
+    const usd = card.prices?.usd ?? null
+    const usdFoil = card.prices?.usd_foil ?? null
     const newCard: CardInDeck = {
       scryfallId: card.id,
       name: card.name,
@@ -96,10 +98,11 @@ export function DeckEditor({ deckId }: Props) {
       typeLine: card.type_line,
       colorIdentity: card.color_identity,
       manaCost: card.mana_cost ?? "",
-      prices: { usd: card.prices?.usd ?? undefined, usdFoil: card.prices?.usd_foil ?? undefined },
+      prices: { usd: usd ?? undefined, usdFoil: usdFoil ?? undefined },
       imageUri: getCardImageUri(card),
       isCommander: false,
     }
+    console.log(`[addCard] ${card.name} | prices from Scryfall:`, card.prices, '| stored:', newCard.prices)
 
     setDeck((d) => d ? { ...d, cards: [...d.cards, newCard] } : d)
     setSaved(false)
