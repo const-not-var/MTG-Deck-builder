@@ -6,6 +6,7 @@ import { Save, Trash2, ArrowLeft, Loader2, Check, Pencil, Swords } from "lucide-
 import type { ScryfallCard, CardInDeck, Deck } from "@/types"
 import { getCardImageUri, isBasicLand } from "@/lib/scryfall"
 import { validateDeck } from "@/lib/validation"
+import { isCommanderEligible, canCoCommand, getCombinedColorIdentity, getPartnerMode, partnerModeLabel } from "@/lib/commander"
 import { CardSearch } from "./CardSearch"
 import { CardListItem } from "./CardListItem"
 import { DeckStats } from "./DeckStats"
@@ -78,10 +79,11 @@ export function DeckEditor({ deckId }: Props) {
       }
     }
 
-    // Color identity check
-    const commander = deck.cards.find((c) => c.isCommander)
-    if (commander && !isBasicLand(card.type_line, card.name)) {
-      const outside = card.color_identity.filter((c) => !commander.colorIdentity.includes(c))
+    // Color identity check — union of all commanders
+    const commanders = deck.cards.filter((c) => c.isCommander)
+    if (commanders.length > 0 && !isBasicLand(card.type_line, card.name)) {
+      const cmdColors = new Set(getCombinedColorIdentity(commanders))
+      const outside = card.color_identity.filter((c) => !cmdColors.has(c))
       if (outside.length > 0) {
         addToast("error", `${card.name} is outside your commander's color identity.`)
         return
@@ -100,6 +102,7 @@ export function DeckEditor({ deckId }: Props) {
       manaCost: card.mana_cost ?? "",
       prices: { usd: usd ?? undefined, usdFoil: usdFoil ?? undefined },
       imageUri: getCardImageUri(card),
+      oracleText: card.oracle_text ?? "",
       isCommander: false,
       isFoil,
       hasFoil: card.foil === true || !!card.prices?.usd_foil,
@@ -121,21 +124,64 @@ setDeck((d) => d ? { ...d, cards: [...d.cards, newCard] } : d)
       const target = d.cards.find((c) => c.scryfallId === scryfallId)
       if (!target) return d
 
-      // Check if card can be commander (legendary creature, legendary planeswalker, or explicitly allowed)
-      const isLegendaryCreature = target.typeLine.includes("Legendary") && target.typeLine.includes("Creature")
-      const isLegendaryPlaneswalker = target.typeLine.includes("Legendary") && target.typeLine.includes("Planeswalker")
-      const hasSpecialText = false // Could check oracle text for "can be your commander"
+      // Unsetting a commander — always allowed
+      if (target.isCommander) {
+        return {
+          ...d,
+          cards: d.cards.map((c) =>
+            c.scryfallId === scryfallId ? { ...c, isCommander: false } : c
+          ),
+        }
+      }
 
-      if (!target.isCommander && !isLegendaryCreature && !isLegendaryPlaneswalker && !hasSpecialText) {
-        addToast("error", `${target.name} must be a Legendary Creature or Planeswalker to be your commander.`)
+      // Check basic eligibility
+      if (!isCommanderEligible(target)) {
+        addToast(
+          "error",
+          `${target.name} must be a Legendary Creature, Planeswalker, or Background enchantment to be a commander.`
+        )
         return d
       }
 
+      const currentCommanders = d.cards.filter((c) => c.isCommander)
+
+      // No current commander — set freely
+      if (currentCommanders.length === 0) {
+        return {
+          ...d,
+          cards: d.cards.map((c) =>
+            c.scryfallId === scryfallId ? { ...c, isCommander: true } : c
+          ),
+        }
+      }
+
+      // Two commanders already — can't add a third
+      if (currentCommanders.length >= 2) {
+        addToast("error", "You already have two commanders. Remove one first.")
+        return d
+      }
+
+      // One current commander — check if they can co-command
+      const check = canCoCommand(currentCommanders[0], target)
+      if (check.ok) {
+        // Add as partner
+        const mode = getPartnerMode(target)
+        const label = mode ? partnerModeLabel(mode) : ""
+        addToast("success", `${target.name} added as partner commander${label ? ` (${label})` : ""}.`)
+        return {
+          ...d,
+          cards: d.cards.map((c) =>
+            c.scryfallId === scryfallId ? { ...c, isCommander: true } : c
+          ),
+        }
+      }
+
+      // Cannot partner — replace the existing commander
       return {
         ...d,
         cards: d.cards.map((c) => ({
           ...c,
-          isCommander: c.scryfallId === scryfallId ? !c.isCommander : false,
+          isCommander: c.scryfallId === scryfallId ? true : false,
         })),
       }
     })
@@ -201,7 +247,8 @@ setDeck((d) => d ? { ...d, cards: [...d.cards, newCard] } : d)
 
   const validation = validateDeck(deck.cards)
   const commander = deck.cards.find((c) => c.isCommander)
-  const commanderColorIdentity = commander?.colorIdentity ?? []
+  const allCommanders = deck.cards.filter((c) => c.isCommander)
+  const commanderColorIdentity = getCombinedColorIdentity(allCommanders)
 
   return (
     <div className="flex flex-col h-[calc(100vh-56px)]">

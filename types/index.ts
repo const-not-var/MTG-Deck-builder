@@ -50,7 +50,10 @@ export interface CardInDeck {
     usdFoil?: string
   }
   imageUri: string
+  oracleText?: string
   isCommander: boolean
+  isFoil?: boolean
+  hasFoil?: boolean
 }
 
 export interface Deck {

@@ -13,7 +13,10 @@ const cardSchema = new Schema({
     usdFoil: String,
   },
   imageUri: { type: String, default: "" },
+  oracleText: { type: String, default: "" },
   isCommander: { type: Boolean, default: false },
+  isFoil: { type: Boolean, default: false },
+  hasFoil: { type: Boolean, default: false },
 })
 
 const deckSchema = new Schema(

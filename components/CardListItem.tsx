@@ -5,6 +5,7 @@ import { X, Crown, CircleSlash } from "lucide-react"
 import type { CardInDeck } from "@/types"
 import { ManaCost } from "./ManaSymbol"
 import { HoloCard } from "./HoloCard"
+import { isCommanderEligible } from "@/lib/commander"
 
 interface Props {
   card: CardInDeck
@@ -113,7 +114,7 @@ export function CardListItem({ card, onRemove, onToggleCommander, commanderColor
 
       {/* Actions */}
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-        {(card.isCommander || /Legendary (Creature|Planeswalker)/.test(card.typeLine)) && (
+        {isCommanderEligible(card) && (
           <button
             onClick={() => onToggleCommander(card.scryfallId)}
             title={card.isCommander ? "Remove as commander" : "Set as commander"}
