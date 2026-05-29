@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Save, Trash2, ArrowLeft, Loader2, Check, Pencil } from "lucide-react"
+import { Save, Trash2, ArrowLeft, Loader2, Check, Pencil, Swords } from "lucide-react"
 import type { ScryfallCard, CardInDeck, Deck } from "@/types"
 import { getCardImageUri, isBasicLand } from "@/lib/scryfall"
 import { validateDeck } from "@/lib/validation"
@@ -61,7 +61,7 @@ export function DeckEditor({ deckId }: Props) {
       .finally(() => setLoading(false))
   }, [deckId])
 
-  const handleCardSelect = useCallback((card: ScryfallCard) => {
+  const handleCardSelect = useCallback((card: ScryfallCard, isFoil: boolean) => {
     if (!deck) return
 
     if (card.legalities?.commander === "banned") {
@@ -71,9 +71,9 @@ export function DeckEditor({ deckId }: Props) {
 
     // Duplicate check (skip basic lands)
     if (!isBasicLand(card.type_line, card.name)) {
-      const exists = deck.cards.find((c) => c.scryfallId === card.id)
+      const exists = deck.cards.find((c) => c.scryfallId === card.id && !!c.isFoil === isFoil)
       if (exists) {
-        addToast("warning", `${card.name} is already in your deck.`)
+        addToast("warning", `${card.name} (${isFoil ? "foil" : "non-foil"}) is already in your deck.`)
         return
       }
     }
@@ -101,12 +101,13 @@ export function DeckEditor({ deckId }: Props) {
       prices: { usd: usd ?? undefined, usdFoil: usdFoil ?? undefined },
       imageUri: getCardImageUri(card),
       isCommander: false,
+      isFoil,
+      hasFoil: card.foil === true || !!card.prices?.usd_foil,
     }
-    console.log(`[addCard] ${card.name} | prices from Scryfall:`, card.prices, '| stored:', newCard.prices)
 
-    setDeck((d) => d ? { ...d, cards: [...d.cards, newCard] } : d)
+setDeck((d) => d ? { ...d, cards: [...d.cards, newCard] } : d)
     setSaved(false)
-    addToast("success", `${card.name} added.`)
+    addToast("success", `${card.name}${isFoil ? " ✦" : ""} added.`)
   }, [deck, addToast])
 
   const handleRemove = useCallback((scryfallId: string) => {
@@ -205,43 +206,41 @@ export function DeckEditor({ deckId }: Props) {
   return (
     <div className="flex flex-col h-[calc(100vh-56px)]">
       {/* Editor header */}
-      <div className="flex items-center gap-3 px-4 py-3 bg-zinc-900 border-b border-zinc-800 flex-shrink-0">
+      <div className="flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.06] flex-shrink-0" style={{ background: "rgba(9,9,11,0.90)", backdropFilter: "blur(12px)" }}>
         <button
           onClick={() => router.push("/decks")}
-          className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-100 transition-colors"
+          className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-200 px-2 py-1.5 rounded-lg hover:bg-zinc-800/60"
         >
           <ArrowLeft className="w-4 h-4" />
           <span className="hidden sm:inline">Decks</span>
         </button>
 
+        <div className="w-px h-5 bg-zinc-800" />
+
         <div className="flex-1 flex items-center gap-2 min-w-0">
           {editingName ? (
-            <form
-              onSubmit={(e) => { e.preventDefault(); handleNameSave() }}
-              className="flex items-center gap-2 flex-1 min-w-0"
-            >
+            <form onSubmit={(e) => { e.preventDefault(); handleNameSave() }} className="flex items-center gap-2 flex-1 min-w-0">
               <input
                 autoFocus
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
                 onBlur={handleNameSave}
-                className="flex-1 min-w-0 bg-zinc-800 border border-amber-500 rounded-md px-2 py-1 text-sm text-zinc-100 focus:outline-none"
+                className="flex-1 min-w-0 bg-zinc-800 border border-amber-500/60 rounded-lg px-2.5 py-1 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
               />
             </form>
           ) : (
-            <button
-              onClick={() => setEditingName(true)}
-              className="flex items-center gap-2 group min-w-0"
-            >
-              <h1 className="text-base font-semibold text-zinc-100 truncate">{deck.name}</h1>
-              <Pencil className="w-3.5 h-3.5 text-zinc-600 opacity-0 group-hover:opacity-100 flex-shrink-0 transition-opacity" />
+            <button onClick={() => setEditingName(true)} className="flex items-center gap-2 group min-w-0 px-1 py-1 rounded-lg hover:bg-zinc-800/50">
+              <h1 className="text-sm font-semibold text-zinc-100 truncate">{deck.name}</h1>
+              <Pencil className="w-3 h-3 text-zinc-600 opacity-0 group-hover:opacity-100 flex-shrink-0" />
             </button>
           )}
         </div>
 
         <div className="flex items-center gap-2">
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-            validation.cardCount === 100 ? "bg-green-950 text-green-400" : "bg-zinc-800 text-zinc-400"
+          <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium tabular-nums ${
+            validation.cardCount === 100
+              ? "bg-green-500/10 text-green-400 border border-green-500/20"
+              : "bg-zinc-800 text-zinc-400 border border-zinc-700/50"
           }`}>
             {validation.cardCount}/100
           </span>
@@ -249,22 +248,20 @@ export function DeckEditor({ deckId }: Props) {
           <button
             onClick={handleSave}
             disabled={saving || saved}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-amber-500 text-zinc-950 hover:bg-amber-400 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold shadow-sm transition-all ${
+              saved
+                ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                : "bg-amber-500 text-zinc-950 hover:bg-amber-400 shadow-amber-500/20 disabled:opacity-50"
+            }`}
           >
-            {saving ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : saved ? (
-              <Check className="w-3.5 h-3.5" />
-            ) : (
-              <Save className="w-3.5 h-3.5" />
-            )}
+            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : saved ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
             {saving ? "Saving…" : saved ? "Saved" : "Save"}
           </button>
 
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-zinc-400 hover:text-red-400 hover:bg-red-950/30 transition-colors"
+            className="p-1.5 rounded-lg text-zinc-600 hover:text-red-400 hover:bg-red-500/10"
           >
             {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
           </button>
@@ -274,39 +271,51 @@ export function DeckEditor({ deckId }: Props) {
       {/* Main 3-column layout */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left: card search */}
-        <div className="w-72 flex-shrink-0 border-r border-zinc-800 flex flex-col bg-zinc-950/50">
-          <div className="p-3 border-b border-zinc-800">
+        <div
+          className="w-72 flex-shrink-0 border-r border-white/[0.05] flex flex-col"
+          style={{ background: "rgba(7,7,30,0.70)" }}
+        >
+          <div className="p-3">
             <CardSearch onCardSelect={handleCardSelect} />
           </div>
-          <div className="flex-1 overflow-y-auto p-3">
-            <p className="text-xs text-zinc-600 text-center mt-8 leading-relaxed">
-              Search above to find cards.<br />
-              Hover over a suggestion to preview it.
+          <div className="flex-1 flex items-start justify-center p-4 pt-6">
+            <p className="text-xs text-zinc-600 text-center leading-relaxed">
+              Search for cards above.<br />Hover a result to preview.
             </p>
           </div>
         </div>
 
         {/* Center: card list */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-4 space-y-4 max-w-2xl">
+        <div className="flex-1 overflow-y-auto" style={{ background: "rgba(7,7,30,0.20)" }}>
+          <div className="p-5 space-y-6 max-w-2xl">
             {SECTIONS.map(({ key, label, filter }) => {
               const sectionCards = deck.cards.filter(filter)
               if (sectionCards.length === 0) return null
               const sectionTotal = sectionCards.reduce((s, c) => s + c.quantity, 0)
               const sectionPrice = sectionCards.reduce((s, c) => {
-                const p = parseFloat(c.prices?.usd ?? c.prices?.usdFoil ?? "0")
+                const p = parseFloat((c.isFoil ? c.prices?.usdFoil : c.prices?.usd) ?? c.prices?.usdFoil ?? c.prices?.usd ?? "0")
                 return s + (isNaN(p) ? 0 : p * c.quantity)
               }, 0)
 
               return (
                 <div key={key}>
-                  <div className="flex items-center justify-between mb-1.5 px-2">
-                    <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                      {label} ({sectionTotal})
+                  <div className="flex items-center gap-2.5 mb-2.5 px-1">
+                    <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-[0.14em]">
+                      {label}
                     </span>
-                    <span className="text-xs text-zinc-600">${sectionPrice.toFixed(2)}</span>
+                    <span
+                      className="text-[10px] font-semibold text-zinc-400 tabular-nums px-1.5 py-0.5 rounded-md"
+                      style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.08)" }}
+                    >
+                      {sectionTotal}
+                    </span>
+                    <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
+                    <span className="text-[10px] text-zinc-500 tabular-nums">${sectionPrice.toFixed(2)}</span>
                   </div>
-                  <div className="space-y-0.5">
+                  <div
+                    className="space-y-0.5 rounded-xl overflow-hidden"
+                    style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)" }}
+                  >
                     {sectionCards.map((card) => (
                       <CardListItem
                         key={card.scryfallId}
@@ -323,16 +332,22 @@ export function DeckEditor({ deckId }: Props) {
             })}
 
             {deck.cards.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <p className="text-zinc-500 text-sm">Your deck is empty.</p>
-                <p className="text-zinc-600 text-xs mt-1">Search for cards on the left to get started.</p>
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <div className="w-14 h-14 rounded-2xl bg-zinc-800/60 border border-zinc-700/40 flex items-center justify-center mb-4">
+                  <Swords className="w-6 h-6 text-zinc-600" />
+                </div>
+                <p className="text-zinc-400 text-sm font-semibold">Your deck is empty</p>
+                <p className="text-zinc-600 text-xs mt-1.5">Search for cards on the left to get started.</p>
               </div>
             )}
           </div>
         </div>
 
         {/* Right: stats */}
-        <div className="w-64 flex-shrink-0 border-l border-zinc-800 overflow-y-auto bg-zinc-950/50">
+        <div
+          className="w-64 flex-shrink-0 border-l border-white/[0.05] overflow-y-auto"
+          style={{ background: "rgba(7,7,30,0.70)" }}
+        >
           <div className="p-4">
             <DeckStats cards={deck.cards} validation={validation} />
           </div>
@@ -340,14 +355,14 @@ export function DeckEditor({ deckId }: Props) {
       </div>
 
       {/* Toast notifications */}
-      <div className="fixed bottom-4 right-4 z-50 space-y-2 pointer-events-none">
+      <div className="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none">
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-xl text-sm font-medium transition-all ${
-              t.type === "error" ? "bg-red-950 border border-red-800 text-red-300" :
-              t.type === "warning" ? "bg-yellow-950 border border-yellow-800 text-yellow-300" :
-              "bg-green-950 border border-green-800 text-green-300"
+            className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-2xl text-sm font-medium border backdrop-blur-sm ${
+              t.type === "error"   ? "bg-red-950/90 border-red-500/20 text-red-300" :
+              t.type === "warning" ? "bg-yellow-950/90 border-yellow-500/20 text-yellow-300" :
+                                     "bg-zinc-900/90 border-zinc-700/60 text-zinc-200"
             }`}
           >
             {t.message}
