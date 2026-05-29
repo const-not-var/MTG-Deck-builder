@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Save, Trash2, ArrowLeft, Loader2, Check, Pencil, Swords } from "lucide-react"
+import { Save, Trash2, ArrowLeft, Loader2, Check, Pencil, Swords, RefreshCw } from "lucide-react"
 import type { ScryfallCard, CardInDeck, Deck } from "@/types"
 import { getCardImageUri, isBasicLand } from "@/lib/scryfall"
 import { validateDeck } from "@/lib/validation"
@@ -56,6 +56,7 @@ export function DeckEditor({ deckId }: Props) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState("")
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -71,10 +72,46 @@ export function DeckEditor({ deckId }: Props) {
     fetch(`/api/decks/${deckId}`)
       .then((r) => r.json())
       .then((data) => {
-        if (data.deck) {
-          setDeck(data.deck)
-          setNameInput(data.deck.name)
-        }
+        if (!data.deck) return
+        setDeck(data.deck)
+        setNameInput(data.deck.name)
+
+        // Backfill oracleText for cards saved before that field existed.
+        // Without oracleText the rules engine can't detect partner abilities,
+        // copy limits, etc., so we silently refresh from Scryfall on first load.
+        const missingIds: string[] = (data.deck.cards as { scryfallId: string; oracleText?: string }[])
+          .filter((c) => !c.oracleText)
+          .map((c) => c.scryfallId)
+
+        if (missingIds.length === 0) return
+
+        fetch("/api/cards/enrich", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: missingIds }),
+        })
+          .then((r) => r.json())
+          .then((enrichData) => {
+            if (!enrichData.cards) return
+            setDeck((d) => {
+              if (!d) return d
+              return {
+                ...d,
+                cards: d.cards.map((c) => {
+                  const e = enrichData.cards[c.scryfallId]
+                  if (!e) return c
+                  return {
+                    ...c,
+                    oracleText: e.oracleText,
+                    typeLine: e.typeLine || c.typeLine,
+                    colorIdentity: e.colorIdentity.length > 0 ? e.colorIdentity : c.colorIdentity,
+                  }
+                }),
+              }
+            })
+            setSaved(false) // prompt the user to save so enriched data is persisted
+          })
+          .catch(() => {}) // best-effort, non-blocking
       })
       .finally(() => setLoading(false))
   }, [deckId])
@@ -298,6 +335,46 @@ export function DeckEditor({ deckId }: Props) {
     setSaved(false)
   }
 
+  // Re-fetches oracle text, type line, and color identity for every card in the
+  // deck from Scryfall. Run this to pick up errata or to repair a deck that was
+  // saved before oracleText was introduced.
+  const handleRefreshCardData = async () => {
+    if (!deck || refreshing) return
+    setRefreshing(true)
+    try {
+      const allIds = deck.cards.map((c) => c.scryfallId)
+      const res = await fetch("/api/cards/enrich", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: allIds }),
+      })
+      const data = await res.json()
+      if (!data.cards) throw new Error("empty response")
+      setDeck((d) => {
+        if (!d) return d
+        return {
+          ...d,
+          cards: d.cards.map((c) => {
+            const e = data.cards[c.scryfallId]
+            if (!e) return c
+            return {
+              ...c,
+              oracleText: e.oracleText,
+              typeLine: e.typeLine || c.typeLine,
+              colorIdentity: e.colorIdentity.length > 0 ? e.colorIdentity : c.colorIdentity,
+            }
+          }),
+        }
+      })
+      setSaved(false)
+      addToast("success", "Card data refreshed from Scryfall.")
+    } catch {
+      addToast("error", "Failed to refresh card data.")
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -375,6 +452,15 @@ export function DeckEditor({ deckId }: Props) {
           >
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : saved ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
             {saving ? "Saving…" : saved ? "Saved" : "Save"}
+          </button>
+
+          <button
+            onClick={handleRefreshCardData}
+            disabled={refreshing || saving}
+            title="Re-fetch card data from Scryfall — picks up errata and repairs decks missing oracle text"
+            className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800/60 disabled:opacity-40"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
           </button>
 
           <button

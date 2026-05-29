@@ -1,6 +1,24 @@
 import type { CardInDeck } from "@/types"
 import { isBasicLand } from "./scryfall"
 
+// ─── HOW TO ADD A NEW COPY-LIMIT RULE ────────────────────────────────────────
+//
+// If WotC prints a new card with an unusual copy limit:
+//
+//  • "A deck can have any number of cards named X."
+//    → already handled automatically — no code change needed.
+//
+//  • "A deck can have up to N cards named X."  (N as a word or digit)
+//    → already handled automatically — no code change needed.
+//
+//  • A brand-new phrasing that doesn't match either regex above:
+//    → add a new regex check inside getDeckLimit(), before the final `return 1`.
+//
+// Detection is oracle-text-driven; newly printed cards that reuse existing
+// phrasing are supported automatically as long as oracleText is stored.
+// Use the Refresh card data button in the deck editor to pick up any errata.
+// ─────────────────────────────────────────────────────────────────────────────
+
 const NUMBER_WORDS: Record<string, number> = {
   one: 1, two: 2, three: 3, four: 4, five: 5,
   six: 6, seven: 7, eight: 8, nine: 9, ten: 10,

@@ -1,5 +1,24 @@
 import type { CardInDeck } from "@/types"
 
+// ─── HOW TO ADD A NEW PARTNER MECHANIC ───────────────────────────────────────
+//
+// When WotC introduces a new "two commanders" mechanic:
+//
+//  1. Add a new string literal to PartnerMode below (e.g. "team-up").
+//
+//  2. In getPartnerMode(), add an oracle-text or type-line check for the new
+//     keyword BEFORE the final `return "solo"`.  Keep specific patterns above
+//     generic ones (e.g. "Partner with" before "Partner").
+//
+//  3. In canCoCommand(), add the new pairing rule alongside the existing ones.
+//
+//  4. In partnerModeLabel(), return a human-readable label for the new mode.
+//
+// All detection is oracle-text-driven, so newly printed cards that use an
+// *existing* keyword (Partner, Friends forever, etc.) work automatically
+// without any code changes.
+// ─────────────────────────────────────────────────────────────────────────────
+
 export type PartnerMode =
   | "solo"              // normal legendary creature/planeswalker, no partner ability
   | "partner"           // generic "Partner" keyword — pairs with any other Partner card
