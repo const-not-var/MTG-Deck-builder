@@ -7,19 +7,36 @@ import type { ScryfallCard, CardInDeck, Deck } from "@/types"
 import { getCardImageUri, isBasicLand } from "@/lib/scryfall"
 import { validateDeck } from "@/lib/validation"
 import { isCommanderEligible, canCoCommand, getCombinedColorIdentity, getPartnerMode, partnerModeLabel } from "@/lib/commander"
+import { getDeckLimit } from "@/lib/rules"
 import { CardSearch } from "./CardSearch"
 import { CardListItem } from "./CardListItem"
 import { DeckStats } from "./DeckStats"
 
 const SECTIONS = [
-  { key: "commander", label: "Commander", filter: (c: CardInDeck) => c.isCommander },
-  { key: "creatures", label: "Creatures", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Creature") && !c.typeLine.includes("Land") },
-  { key: "planeswalkers", label: "Planeswalkers", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Planeswalker") && !c.typeLine.includes("Creature") },
-  { key: "instants", label: "Instants", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Instant") },
-  { key: "sorceries", label: "Sorceries", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Sorcery") },
-  { key: "artifacts", label: "Artifacts", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Artifact") && !c.typeLine.includes("Creature") && !c.typeLine.includes("Enchantment") },
+  { key: "commander",    label: "Commander",    filter: (c: CardInDeck) => c.isCommander },
+  { key: "creatures",    label: "Creatures",    filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Creature") && !c.typeLine.includes("Land") },
+  { key: "planeswalkers",label: "Planeswalkers",filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Planeswalker") && !c.typeLine.includes("Creature") },
+  { key: "battles",      label: "Battles",      filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Battle") && !c.typeLine.includes("Creature") },
+  { key: "instants",     label: "Instants",     filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Instant") },
+  { key: "sorceries",    label: "Sorceries",    filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Sorcery") },
+  // Exclude Creatures, Enchantments, and Lands so artifact versions of those go to their own section
+  { key: "artifacts",    label: "Artifacts",    filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Artifact") && !c.typeLine.includes("Creature") && !c.typeLine.includes("Enchantment") && !c.typeLine.includes("Land") },
   { key: "enchantments", label: "Enchantments", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Enchantment") && !c.typeLine.includes("Creature") && !c.typeLine.includes("Artifact") },
-  { key: "lands", label: "Lands", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Land") },
+  { key: "lands",        label: "Lands",        filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Land") },
+  // Catch-all for any card type not covered above (e.g. future types)
+  {
+    key: "other", label: "Other",
+    filter: (c: CardInDeck) =>
+      !c.isCommander &&
+      !c.typeLine.includes("Creature") &&
+      !c.typeLine.includes("Planeswalker") &&
+      !c.typeLine.includes("Battle") &&
+      !c.typeLine.includes("Instant") &&
+      !c.typeLine.includes("Sorcery") &&
+      !c.typeLine.includes("Artifact") &&
+      !c.typeLine.includes("Enchantment") &&
+      !c.typeLine.includes("Land"),
+  },
 ]
 
 interface Toast {
@@ -65,27 +82,60 @@ export function DeckEditor({ deckId }: Props) {
   const handleCardSelect = useCallback((card: ScryfallCard, isFoil: boolean) => {
     if (!deck) return
 
-    if (card.legalities?.commander === "banned") {
+    // Legality — block banned and not-legal cards
+    const legality = card.legalities?.commander
+    if (legality === "banned") {
       addToast("error", `${card.name} is banned in Commander.`)
       return
     }
-
-    // Duplicate check (skip basic lands)
-    if (!isBasicLand(card.type_line, card.name)) {
-      const exists = deck.cards.find((c) => c.scryfallId === card.id && !!c.isFoil === isFoil)
-      if (exists) {
-        addToast("warning", `${card.name} (${isFoil ? "foil" : "non-foil"}) is already in your deck.`)
-        return
-      }
+    if (legality === "not_legal") {
+      addToast("error", `${card.name} is not legal in Commander.`)
+      return
     }
 
-    // Color identity check — union of all commanders
+    // How many copies are allowed for this card
+    const cardSnap = { name: card.name, typeLine: card.type_line, oracleText: card.oracle_text ?? "" }
+    const limit = getDeckLimit(cardSnap)
+
+    // Total copies of this card name already in deck (all printings combined)
+    const currentTotal = deck.cards
+      .filter((c) => c.name === card.name)
+      .reduce((s, c) => s + c.quantity, 0)
+
+    if (limit !== Infinity && currentTotal >= limit) {
+      const msg = limit === 1
+        ? `${card.name} is already in your deck.`
+        : `A deck can have at most ${limit} copies of ${card.name} (you have ${currentTotal}).`
+      addToast("warning", msg)
+      return
+    }
+
+    // Color identity — union of all commanders
     const commanders = deck.cards.filter((c) => c.isCommander)
     if (commanders.length > 0 && !isBasicLand(card.type_line, card.name)) {
       const cmdColors = new Set(getCombinedColorIdentity(commanders))
       const outside = card.color_identity.filter((c) => !cmdColors.has(c))
       if (outside.length > 0) {
         addToast("error", `${card.name} is outside your commander's color identity.`)
+        return
+      }
+    }
+
+    // For multi-copy cards (basic lands, any-number, limited-count): increment quantity on
+    // the same printing if it already exists in the deck, rather than creating a duplicate entry.
+    if (limit !== 1) {
+      const sameEntry = deck.cards.find((c) => c.scryfallId === card.id && !!c.isFoil === isFoil)
+      if (sameEntry) {
+        setDeck((d) => d ? {
+          ...d,
+          cards: d.cards.map((c) =>
+            c.scryfallId === card.id && !!c.isFoil === isFoil
+              ? { ...c, quantity: c.quantity + 1 }
+              : c
+          ),
+        } : d)
+        setSaved(false)
+        addToast("success", `${card.name}${isFoil ? " ✦" : ""} ×${sameEntry.quantity + 1}.`)
         return
       }
     }
@@ -108,13 +158,35 @@ export function DeckEditor({ deckId }: Props) {
       hasFoil: card.foil === true || !!card.prices?.usd_foil,
     }
 
-setDeck((d) => d ? { ...d, cards: [...d.cards, newCard] } : d)
+    setDeck((d) => d ? { ...d, cards: [...d.cards, newCard] } : d)
     setSaved(false)
     addToast("success", `${card.name}${isFoil ? " ✦" : ""} added.`)
   }, [deck, addToast])
 
   const handleRemove = useCallback((scryfallId: string) => {
     setDeck((d) => d ? { ...d, cards: d.cards.filter((c) => c.scryfallId !== scryfallId) } : d)
+    setSaved(false)
+  }, [])
+
+  const handleQuantityChange = useCallback((scryfallId: string, delta: number) => {
+    setDeck((d) => {
+      if (!d) return d
+      const card = d.cards.find((c) => c.scryfallId === scryfallId)
+      if (!card) return d
+      const newQty = card.quantity + delta
+      if (newQty <= 0) {
+        return { ...d, cards: d.cards.filter((c) => c.scryfallId !== scryfallId) }
+      }
+      // Enforce per-name copy limit
+      const limit = getDeckLimit(card)
+      if (limit !== Infinity) {
+        const otherTotal = d.cards
+          .filter((c) => c.name === card.name && c.scryfallId !== scryfallId)
+          .reduce((s, c) => s + c.quantity, 0)
+        if (newQty + otherTotal > limit) return d
+      }
+      return { ...d, cards: d.cards.map((c) => c.scryfallId === scryfallId ? { ...c, quantity: newQty } : c) }
+    })
     setSaved(false)
   }, [])
 
@@ -368,6 +440,7 @@ setDeck((d) => d ? { ...d, cards: [...d.cards, newCard] } : d)
                         key={card.scryfallId}
                         card={card}
                         onRemove={handleRemove}
+                        onQuantityChange={handleQuantityChange}
                         onToggleCommander={handleToggleCommander}
                         commanderColorIdentity={commanderColorIdentity}
                         hasCommander={!!commander}

@@ -1,6 +1,7 @@
 import type { CardInDeck, DeckValidation } from "@/types"
 import { isBasicLand } from "./scryfall"
 import { canCoCommand, getCombinedColorIdentity } from "./commander"
+import { getDeckLimit } from "./rules"
 
 export function validateDeck(cards: CardInDeck[]): DeckValidation {
   const errors: string[] = []
@@ -12,6 +13,7 @@ export function validateDeck(cards: CardInDeck[]): DeckValidation {
   const commanders = cards.filter((c) => c.isCommander)
   const commanderCount = commanders.length
 
+  // Commander count / partner validity
   if (commanderCount === 0) {
     warnings.push("No commander set — hover a card and click the crown icon to designate it.")
   } else if (commanderCount === 2) {
@@ -20,22 +22,36 @@ export function validateDeck(cards: CardInDeck[]): DeckValidation {
       errors.push(check.reason ?? "These two cards cannot be paired as commanders.")
     }
   } else if (commanderCount > 2) {
-    errors.push(`Too many commanders (${commanderCount}) — Commander supports at most two.`)
+    errors.push(`Too many commanders (${commanderCount}) — Commander allows at most two.`)
   }
 
+  // Deck size
   if (cardCount !== 100) {
     if (cardCount < 100) warnings.push(`${100 - cardCount} cards short of 100.`)
     else errors.push(`Deck has ${cardCount} cards — trim ${cardCount - 100} to reach 100.`)
   }
 
-  // Duplicates (skip basic lands)
-  const nameCounts = new Map<string, number>()
+  // Singleton / copy-limit enforcement (skip basic lands — they're handled by getDeckLimit returning Infinity)
+  const nameTotals = new Map<string, { count: number; card: CardInDeck }>()
   for (const card of cards) {
     if (isBasicLand(card.typeLine, card.name)) continue
-    nameCounts.set(card.name, (nameCounts.get(card.name) ?? 0) + card.quantity)
+    const entry = nameTotals.get(card.name)
+    if (entry) {
+      entry.count += card.quantity
+    } else {
+      nameTotals.set(card.name, { count: card.quantity, card })
+    }
   }
-  for (const [name, count] of nameCounts) {
-    if (count > 1) duplicates.push(name)
+  for (const [name, { count, card }] of nameTotals) {
+    const limit = getDeckLimit(card)
+    if (limit === Infinity) continue // "any number" cards are fine
+    if (count > limit) {
+      if (limit === 1) {
+        duplicates.push(name)
+      } else {
+        errors.push(`Too many copies of ${name}: have ${count}, max ${limit}.`)
+      }
+    }
   }
   if (duplicates.length > 0) {
     errors.push(`Duplicate cards: ${duplicates.join(", ")}`)

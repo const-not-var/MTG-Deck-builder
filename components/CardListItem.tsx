@@ -6,16 +6,18 @@ import type { CardInDeck } from "@/types"
 import { ManaCost } from "./ManaSymbol"
 import { HoloCard } from "./HoloCard"
 import { isCommanderEligible } from "@/lib/commander"
+import { getDeckLimit } from "@/lib/rules"
 
 interface Props {
   card: CardInDeck
   onRemove: (scryfallId: string) => void
+  onQuantityChange: (scryfallId: string, delta: number) => void
   onToggleCommander: (scryfallId: string) => void
   commanderColorIdentity: string[]
   hasCommander: boolean
 }
 
-export function CardListItem({ card, onRemove, onToggleCommander, commanderColorIdentity, hasCommander }: Props) {
+export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommander, commanderColorIdentity, hasCommander }: Props) {
   const [imgError, setImgError] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 })
@@ -33,6 +35,10 @@ export function CardListItem({ card, onRemove, onToggleCommander, commanderColor
     !card.isCommander &&
     !card.typeLine.includes("Basic Land") &&
     card.colorIdentity.some((c) => !commanderColorIdentity.includes(c))
+
+  // Cards that can have more than 1 copy show quantity controls
+  const limit = getDeckLimit(card)
+  const isMultiCopy = limit !== 1
 
   const accentBorder = isColorViolation
     ? "border-l-2 border-l-red-500/70"
@@ -87,10 +93,22 @@ export function CardListItem({ card, onRemove, onToggleCommander, commanderColor
       {/* Card info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 min-w-0">
-          {card.quantity > 1 && (
-            <span className="text-xs font-bold text-amber-400 flex-shrink-0">{card.quantity}×</span>
+          {/* Quantity badge for multi-copy cards */}
+          {isMultiCopy && (
+            <span className="text-xs font-bold text-amber-400 flex-shrink-0 tabular-nums">
+              {card.quantity}×
+            </span>
           )}
-          <span className={`text-sm font-medium truncate ${isColorViolation ? "text-red-400" : card.isCommander ? "text-amber-100" : "text-zinc-200"}`}>
+          {!isMultiCopy && card.quantity > 1 && (
+            <span className="text-xs font-bold text-amber-400 flex-shrink-0 tabular-nums">
+              {card.quantity}×
+            </span>
+          )}
+          <span
+            className={`text-sm font-medium truncate ${
+              isColorViolation ? "text-red-400" : card.isCommander ? "text-amber-100" : "text-zinc-200"
+            }`}
+          >
             {card.name}
             {card.isFoil ? <span className="text-blue-400/80 ml-1 text-xs">✦</span> : null}
           </span>
@@ -114,6 +132,26 @@ export function CardListItem({ card, onRemove, onToggleCommander, commanderColor
 
       {/* Actions */}
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+        {/* Quantity controls for basic lands and "any number" cards */}
+        {isMultiCopy && (
+          <>
+            <button
+              onClick={() => onQuantityChange(card.scryfallId, -1)}
+              title="Remove one copy"
+              className="w-5 h-5 flex items-center justify-center rounded hover:bg-zinc-700/80 text-zinc-500 hover:text-zinc-200 transition-colors text-sm font-bold leading-none"
+            >
+              −
+            </button>
+            <button
+              onClick={() => onQuantityChange(card.scryfallId, +1)}
+              title={limit === Infinity ? "Add one more copy" : `Add one more (max ${limit})`}
+              className="w-5 h-5 flex items-center justify-center rounded hover:bg-zinc-700/80 text-zinc-500 hover:text-zinc-200 transition-colors text-sm font-bold leading-none"
+            >
+              +
+            </button>
+          </>
+        )}
+
         {isCommanderEligible(card) && (
           <button
             onClick={() => onToggleCommander(card.scryfallId)}
@@ -125,6 +163,7 @@ export function CardListItem({ card, onRemove, onToggleCommander, commanderColor
         )}
         <button
           onClick={() => onRemove(card.scryfallId)}
+          title="Remove all copies"
           className="p-1.5 rounded-lg hover:bg-zinc-700/80 text-zinc-500 hover:text-red-400 transition-colors"
         >
           <X className="w-3.5 h-3.5" />
