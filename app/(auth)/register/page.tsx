@@ -16,12 +16,8 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.")
-      return
-    }
+    if (password.length < 8) { setError("Password must be at least 8 characters."); return }
     setLoading(true)
-
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -29,12 +25,7 @@ export default function RegisterPage() {
     })
     const data = await res.json()
     setLoading(false)
-
-    if (!res.ok) {
-      setError(data.error ?? "Registration failed.")
-      return
-    }
-
+    if (!res.ok) { setError(data.error ?? "Registration failed."); return }
     router.push("/login?registered=1")
   }
 
@@ -46,83 +37,85 @@ export default function RegisterPage() {
           alt=""
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(9,9,11,0.85) 0%, rgba(15,15,26,0.75) 100%)" }} />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(9,9,11,0.88) 0%, rgba(15,10,30,0.80) 100%)" }} />
       </div>
 
       <div className="relative z-10 w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-4">
-            <Layers className="w-6 h-6 text-amber-400" />
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 mb-5 shadow-lg shadow-amber-500/5">
+            <Layers className="w-7 h-7 text-amber-400" />
           </div>
-          <h1 className="text-2xl font-bold text-zinc-100">Commander Vault</h1>
-          <p className="text-sm text-zinc-500 mt-1">Create your free account</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Commander Vault</h1>
+          <p className="text-sm text-zinc-400 mt-1.5">Create your free account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="rounded-2xl p-6 space-y-4" style={{ background: "rgba(9,9,11,0.75)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(16px)" }}>
+        <div className="rounded-2xl p-6 space-y-4" style={{ background: "rgba(9,9,11,0.70)", border: "1px solid rgba(255,255,255,0.07)", backdropFilter: "blur(24px)", boxShadow: "0 25px 50px rgba(0,0,0,0.5)" }}>
           {error && (
-            <div className="flex items-center gap-2 text-sm text-red-400 bg-red-950/40 border border-red-900/50 rounded-lg px-3 py-2.5">
+            <div className="flex items-center gap-2.5 text-sm text-red-400 bg-red-950/40 border border-red-500/20 rounded-xl px-3.5 py-2.5">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
           )}
 
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Name</label>
-            <input
-              type="text"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Jace Beleren"
-              className="w-full px-3 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition-colors"
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide">Name</label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Jace Beleren"
+                className="w-full px-3.5 py-2.5 bg-zinc-800/80 border border-zinc-700/80 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20"
+              />
+            </div>
 
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="w-full px-3 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition-colors"
-            />
-          </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide">Email</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full px-3.5 py-2.5 bg-zinc-800/80 border border-zinc-700/80 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20"
+              />
+            </div>
 
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Min. 8 characters"
-              className="w-full px-3 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition-colors"
-            />
-            {password.length >= 8 && (
-              <p className="flex items-center gap-1 text-xs text-green-400 mt-1">
-                <CheckCircle2 className="w-3 h-3" /> Strong enough
-              </p>
-            )}
-          </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide">Password</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Min. 8 characters"
+                className="w-full px-3.5 py-2.5 bg-zinc-800/80 border border-zinc-700/80 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20"
+              />
+              {password.length >= 8 && (
+                <p className="flex items-center gap-1.5 text-xs text-green-400 mt-1.5">
+                  <CheckCircle2 className="w-3 h-3" /> Looks good
+                </p>
+              )}
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-amber-500 text-zinc-950 font-semibold text-sm hover:bg-amber-400 disabled:opacity-60 disabled:cursor-not-allowed transition-colors mt-2"
-          >
-            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {loading ? "Creating account…" : "Create Account"}
-          </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-amber-500 text-zinc-950 font-semibold text-sm hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-500/20 mt-1"
+            >
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+              {loading ? "Creating account…" : "Create Account"}
+            </button>
+          </form>
 
           <p className="text-center text-xs text-zinc-500 pt-1">
             Already have an account?{" "}
-            <Link href="/login" className="text-amber-400 hover:text-amber-300 transition-colors">
+            <Link href="/login" className="text-amber-400 hover:text-amber-300 font-medium">
               Sign in
             </Link>
           </p>
-        </form>
+        </div>
       </div>
     </div>
   )

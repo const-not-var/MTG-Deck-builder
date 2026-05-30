@@ -13,19 +13,19 @@ import { CardListItem } from "./CardListItem"
 import { DeckStats } from "./DeckStats"
 
 const SECTIONS = [
-  { key: "commander",    label: "Commander",    filter: (c: CardInDeck) => c.isCommander },
-  { key: "creatures",    label: "Creatures",    filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Creature") && !c.typeLine.includes("Land") },
-  { key: "planeswalkers",label: "Planeswalkers",filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Planeswalker") && !c.typeLine.includes("Creature") },
-  { key: "battles",      label: "Battles",      filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Battle") && !c.typeLine.includes("Creature") },
-  { key: "instants",     label: "Instants",     filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Instant") },
-  { key: "sorceries",    label: "Sorceries",    filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Sorcery") },
+  { key: "commander",     label: "Commander",     color: "#f59e0b", filter: (c: CardInDeck) => c.isCommander },
+  { key: "creatures",     label: "Creatures",     color: "#34d399", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Creature") && !c.typeLine.includes("Land") },
+  { key: "planeswalkers", label: "Planeswalkers", color: "#a78bfa", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Planeswalker") && !c.typeLine.includes("Creature") },
+  { key: "battles",       label: "Battles",       color: "#f87171", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Battle") && !c.typeLine.includes("Creature") },
+  { key: "instants",      label: "Instants",      color: "#38bdf8", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Instant") },
+  { key: "sorceries",     label: "Sorceries",     color: "#fb923c", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Sorcery") },
   // Exclude Creatures, Enchantments, and Lands so artifact versions of those go to their own section
-  { key: "artifacts",    label: "Artifacts",    filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Artifact") && !c.typeLine.includes("Creature") && !c.typeLine.includes("Enchantment") && !c.typeLine.includes("Land") },
-  { key: "enchantments", label: "Enchantments", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Enchantment") && !c.typeLine.includes("Creature") && !c.typeLine.includes("Artifact") },
-  { key: "lands",        label: "Lands",        filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Land") },
+  { key: "artifacts",     label: "Artifacts",     color: "#a1a1aa", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Artifact") && !c.typeLine.includes("Creature") && !c.typeLine.includes("Enchantment") && !c.typeLine.includes("Land") },
+  { key: "enchantments",  label: "Enchantments",  color: "#2dd4bf", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Enchantment") && !c.typeLine.includes("Creature") && !c.typeLine.includes("Artifact") },
+  { key: "lands",         label: "Lands",         color: "#d97706", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Land") },
   // Catch-all for any card type not covered above (e.g. future types)
   {
-    key: "other", label: "Other",
+    key: "other", label: "Other", color: "#6b7280",
     filter: (c: CardInDeck) =>
       !c.isCommander &&
       !c.typeLine.includes("Creature") &&
@@ -68,6 +68,31 @@ export function DeckEditor({ deckId }: Props) {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3500)
   }, [])
 
+  const fetchSalt = useCallback((names: string[]) => {
+    if (names.length === 0) return
+    fetch("/api/cards/salt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ names }),
+    })
+      .then((r) => r.json())
+      .then((saltData) => {
+        if (!saltData.salt) return
+        setDeck((d) => {
+          if (!d) return d
+          return {
+            ...d,
+            cards: d.cards.map((c) => {
+              const s = saltData.salt[c.name]
+              return typeof s === "number" ? { ...c, salt: s } : c
+            }),
+          }
+        })
+        setSaved(false)
+      })
+      .catch(() => {})
+  }, [])
+
   useEffect(() => {
     fetch(`/api/decks/${deckId}`)
       .then((r) => r.json())
@@ -77,44 +102,48 @@ export function DeckEditor({ deckId }: Props) {
         setNameInput(data.deck.name)
 
         // Backfill oracleText for cards saved before that field existed.
-        // Without oracleText the rules engine can't detect partner abilities,
-        // copy limits, etc., so we silently refresh from Scryfall on first load.
         const missingIds: string[] = (data.deck.cards as { scryfallId: string; oracleText?: string }[])
           .filter((c) => !c.oracleText)
           .map((c) => c.scryfallId)
 
-        if (missingIds.length === 0) return
-
-        fetch("/api/cards/enrich", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ids: missingIds }),
-        })
-          .then((r) => r.json())
-          .then((enrichData) => {
-            if (!enrichData.cards) return
-            setDeck((d) => {
-              if (!d) return d
-              return {
-                ...d,
-                cards: d.cards.map((c) => {
-                  const e = enrichData.cards[c.scryfallId]
-                  if (!e) return c
-                  return {
-                    ...c,
-                    oracleText: e.oracleText,
-                    typeLine: e.typeLine || c.typeLine,
-                    colorIdentity: e.colorIdentity.length > 0 ? e.colorIdentity : c.colorIdentity,
-                  }
-                }),
-              }
-            })
-            setSaved(false) // prompt the user to save so enriched data is persisted
+        if (missingIds.length > 0) {
+          fetch("/api/cards/enrich", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids: missingIds }),
           })
-          .catch(() => {}) // best-effort, non-blocking
+            .then((r) => r.json())
+            .then((enrichData) => {
+              if (!enrichData.cards) return
+              setDeck((d) => {
+                if (!d) return d
+                return {
+                  ...d,
+                  cards: d.cards.map((c) => {
+                    const e = enrichData.cards[c.scryfallId]
+                    if (!e) return c
+                    return {
+                      ...c,
+                      oracleText: e.oracleText,
+                      typeLine: e.typeLine || c.typeLine,
+                      colorIdentity: e.colorIdentity.length > 0 ? e.colorIdentity : c.colorIdentity,
+                    }
+                  }),
+                }
+              })
+              setSaved(false)
+            })
+            .catch(() => {})
+        }
+
+        // Backfill salt scores for cards that don't have them yet
+        const missingSalt: string[] = (data.deck.cards as { name: string; salt?: number }[])
+          .filter((c) => c.salt === undefined || c.salt === null)
+          .map((c) => c.name)
+        fetchSalt(missingSalt)
       })
       .finally(() => setLoading(false))
-  }, [deckId])
+  }, [deckId, fetchSalt])
 
   const handleCardSelect = useCallback((card: ScryfallCard, isFoil: boolean) => {
     if (!deck) return
@@ -198,7 +227,11 @@ export function DeckEditor({ deckId }: Props) {
     setDeck((d) => d ? { ...d, cards: [...d.cards, newCard] } : d)
     setSaved(false)
     addToast("success", `${card.name}${isFoil ? " ✦" : ""} added.`)
-  }, [deck, addToast])
+
+    // Fetch salt for this card if not already in the deck
+    const alreadyInDeck = deck.cards.some((c) => c.name === card.name && c.salt !== undefined)
+    if (!alreadyInDeck) fetchSalt([card.name])
+  }, [deck, addToast, fetchSalt])
 
   const handleRemove = useCallback((scryfallId: string) => {
     setDeck((d) => d ? { ...d, cards: d.cards.filter((c) => c.scryfallId !== scryfallId) } : d)
@@ -368,6 +401,9 @@ export function DeckEditor({ deckId }: Props) {
       })
       setSaved(false)
       addToast("success", "Card data refreshed from Scryfall.")
+
+      // Also refresh salt scores for all cards
+      fetchSalt(deck.cards.map((c) => c.name))
     } catch {
       addToast("error", "Failed to refresh card data.")
     } finally {
@@ -399,21 +435,29 @@ export function DeckEditor({ deckId }: Props) {
   const allCommanders = deck.cards.filter((c) => c.isCommander)
   const commanderColorIdentity = getCombinedColorIdentity(allCommanders)
 
+  const saltedCards = deck.cards.filter((c) => c.salt !== undefined)
+  const totalSalt = saltedCards.reduce((s, c) => s + (c.salt ?? 0) * c.quantity, 0)
+  const saltLoaded = saltedCards.length > 0
+  const saltColor = totalSalt < 5 ? "#22c55e" : totalSalt < 15 ? "#eab308" : totalSalt < 30 ? "#f97316" : "#ef4444"
+
   return (
     <div className="flex flex-col h-[calc(100vh-56px)]">
       {/* Editor header */}
-      <div className="flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.06] flex-shrink-0" style={{ background: "rgba(9,9,11,0.90)", backdropFilter: "blur(12px)" }}>
+      <div
+        className="flex items-center gap-3 px-5 py-3.5 border-b border-white/[0.06] flex-shrink-0"
+        style={{ background: "rgba(6,7,30,0.94)", backdropFilter: "blur(20px)" }}
+      >
         <button
           onClick={() => router.push("/decks")}
-          className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-200 px-2 py-1.5 rounded-lg hover:bg-zinc-800/60"
+          className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-200 px-2.5 py-1.5 rounded-lg hover:bg-white/[0.06] transition-colors flex-shrink-0"
         >
           <ArrowLeft className="w-4 h-4" />
           <span className="hidden sm:inline">Decks</span>
         </button>
 
-        <div className="w-px h-5 bg-zinc-800" />
+        <div className="w-px h-6 bg-white/[0.08]" />
 
-        <div className="flex-1 flex items-center gap-2 min-w-0">
+        <div className="flex-1 flex flex-col gap-0.5 min-w-0">
           {editingName ? (
             <form onSubmit={(e) => { e.preventDefault(); handleNameSave() }} className="flex items-center gap-2 flex-1 min-w-0">
               <input
@@ -421,33 +465,83 @@ export function DeckEditor({ deckId }: Props) {
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
                 onBlur={handleNameSave}
-                className="flex-1 min-w-0 bg-zinc-800 border border-amber-500/60 rounded-lg px-2.5 py-1 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                className="flex-1 min-w-0 bg-zinc-800/80 border border-amber-500/60 rounded-lg px-3 py-1.5 text-sm font-semibold text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
               />
             </form>
           ) : (
-            <button onClick={() => setEditingName(true)} className="flex items-center gap-2 group min-w-0 px-1 py-1 rounded-lg hover:bg-zinc-800/50">
-              <h1 className="text-sm font-semibold text-zinc-100 truncate">{deck.name}</h1>
-              <Pencil className="w-3 h-3 text-zinc-600 opacity-0 group-hover:opacity-100 flex-shrink-0" />
-            </button>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <button
+                onClick={() => setEditingName(true)}
+                className="flex items-center gap-2 group min-w-0 py-0.5 rounded-lg hover:bg-white/[0.05] px-1 transition-colors"
+              >
+                <h1 className="text-base font-bold text-zinc-100 truncate">{deck.name}</h1>
+                <Pencil className="w-3 h-3 text-zinc-600 opacity-0 group-hover:opacity-100 flex-shrink-0 transition-opacity" />
+              </button>
+            </div>
+          )}
+          {allCommanders.length > 0 && (
+            <p className="text-xs text-zinc-500 truncate pl-1">
+              {allCommanders.map((c) => c.name).join(" · ")}
+            </p>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium tabular-nums ${
-            validation.cardCount === 100
-              ? "bg-green-500/10 text-green-400 border border-green-500/20"
-              : "bg-zinc-800 text-zinc-400 border border-zinc-700/50"
-          }`}>
-            {validation.cardCount}/100
-          </span>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {/* Salt meter */}
+          <div
+            className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl cursor-default"
+            title="Total deck salt — sum of all cards' EDHREC salt scores"
+            style={{
+              background: saltLoaded ? `${saltColor}12` : "rgba(255,255,255,0.04)",
+              border: saltLoaded ? `1px solid ${saltColor}30` : "1px solid rgba(255,255,255,0.07)",
+              transition: "all 0.5s",
+            }}
+          >
+            <div className="flex items-center gap-1.5">
+              <span className="text-base leading-none">🧂</span>
+              <span
+                className="text-lg font-bold tabular-nums leading-none"
+                style={{ color: saltLoaded ? saltColor : "#52525b", transition: "color 0.5s" }}
+              >
+                {saltLoaded ? totalSalt.toFixed(1) : "—"}
+              </span>
+            </div>
+            <span className="text-[9px] font-medium uppercase tracking-wider" style={{ color: saltLoaded ? saltColor : "#52525b", opacity: 0.7 }}>
+              Salt
+            </span>
+          </div>
+
+          <div className="w-px h-8 bg-white/[0.06]" />
+
+          {/* Card count */}
+          <div className="flex flex-col items-end gap-1">
+            <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold tabular-nums ${
+              validation.cardCount === 100
+                ? "bg-green-500/15 text-green-400 border border-green-500/25"
+                : validation.cardCount > 100
+                ? "bg-red-500/15 text-red-400 border border-red-500/25"
+                : "bg-white/[0.06] text-zinc-400 border border-white/[0.08]"
+            }`}>
+              {validation.cardCount}/100
+            </span>
+            <div className="w-20 h-1 bg-white/[0.06] rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  validation.cardCount === 100 ? "bg-green-500" :
+                  validation.cardCount > 100 ? "bg-red-500" : "bg-amber-500"
+                }`}
+                style={{ width: `${Math.min((validation.cardCount / 100) * 100, 100)}%` }}
+              />
+            </div>
+          </div>
 
           <button
             onClick={handleSave}
             disabled={saving || saved}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold shadow-sm transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all ${
               saved
-                ? "bg-green-500/10 text-green-400 border border-green-500/20"
-                : "bg-amber-500 text-zinc-950 hover:bg-amber-400 shadow-amber-500/20 disabled:opacity-50"
+                ? "bg-green-500/15 text-green-400 border border-green-500/25"
+                : "bg-amber-500 text-zinc-950 hover:bg-amber-400 shadow-lg shadow-amber-500/20 disabled:opacity-50"
             }`}
           >
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : saved ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
@@ -458,7 +552,7 @@ export function DeckEditor({ deckId }: Props) {
             onClick={handleRefreshCardData}
             disabled={refreshing || saving}
             title="Re-fetch card data from Scryfall — picks up errata and repairs decks missing oracle text"
-            className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800/60 disabled:opacity-40"
+            className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.06] disabled:opacity-40 transition-colors"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
           </button>
@@ -466,7 +560,7 @@ export function DeckEditor({ deckId }: Props) {
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="p-1.5 rounded-lg text-zinc-600 hover:text-red-400 hover:bg-red-500/10"
+            className="p-1.5 rounded-lg text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
           >
             {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
           </button>
@@ -477,23 +571,27 @@ export function DeckEditor({ deckId }: Props) {
       <div className="flex flex-1 overflow-hidden">
         {/* Left: card search */}
         <div
-          className="w-72 flex-shrink-0 border-r border-white/[0.05] flex flex-col"
-          style={{ background: "rgba(7,7,30,0.70)" }}
+          className="w-72 flex-shrink-0 border-r flex flex-col"
+          style={{ background: "rgba(6,7,30,0.60)", borderColor: "rgba(255,255,255,0.05)" }}
         >
-          <div className="p-3">
+          <div className="px-4 pt-4 pb-3">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-1 h-4 rounded-full bg-amber-500/80 flex-shrink-0" />
+              <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Add Cards</span>
+            </div>
             <CardSearch onCardSelect={handleCardSelect} />
           </div>
-          <div className="flex-1 flex items-start justify-center p-4 pt-6">
-            <p className="text-xs text-zinc-600 text-center leading-relaxed">
-              Search for cards above.<br />Hover a result to preview.
+          <div className="flex-1 flex items-start justify-center p-4 pt-4">
+            <p className="text-xs text-zinc-700 text-center leading-relaxed">
+              Search above and click a<br />printing to add it to your deck.
             </p>
           </div>
         </div>
 
         {/* Center: card list */}
-        <div className="flex-1 overflow-y-auto" style={{ background: "rgba(7,7,30,0.20)" }}>
-          <div className="p-5 space-y-6 max-w-2xl">
-            {SECTIONS.map(({ key, label, filter }) => {
+        <div className="flex-1 overflow-y-auto" style={{ background: "rgba(6,7,30,0.15)" }}>
+          <div className="p-6 space-y-7 max-w-2xl">
+            {SECTIONS.map(({ key, label, color, filter }) => {
               const sectionCards = deck.cards.filter(filter)
               if (sectionCards.length === 0) return null
               const sectionTotal = sectionCards.reduce((s, c) => s + c.quantity, 0)
@@ -505,21 +603,33 @@ export function DeckEditor({ deckId }: Props) {
               return (
                 <div key={key}>
                   <div className="flex items-center gap-2.5 mb-2.5 px-1">
-                    <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-[0.14em]">
+                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                    <span className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color }}>
                       {label}
                     </span>
                     <span
-                      className="text-[10px] font-semibold text-zinc-400 tabular-nums px-1.5 py-0.5 rounded-md"
-                      style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.08)" }}
+                      className="text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-md flex-shrink-0"
+                      style={{
+                        background: `${color}18`,
+                        border: `1px solid ${color}30`,
+                        color,
+                      }}
                     >
                       {sectionTotal}
                     </span>
-                    <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
+                    <div
+                      className="flex-1 h-px"
+                      style={{ background: `linear-gradient(to right, ${color}25, transparent)` }}
+                    />
                     <span className="text-[10px] text-zinc-500 tabular-nums">${sectionPrice.toFixed(2)}</span>
                   </div>
                   <div
                     className="space-y-0.5 rounded-xl overflow-hidden"
-                    style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)" }}
+                    style={{
+                      background: "rgba(255,255,255,0.02)",
+                      border: `1px solid rgba(255,255,255,0.05)`,
+                      borderTop: `2px solid ${color}28`,
+                    }}
                   >
                     {sectionCards.map((card) => (
                       <CardListItem
@@ -538,12 +648,21 @@ export function DeckEditor({ deckId }: Props) {
             })}
 
             {deck.cards.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-14 h-14 rounded-2xl bg-zinc-800/60 border border-zinc-700/40 flex items-center justify-center mb-4">
-                  <Swords className="w-6 h-6 text-zinc-600" />
+              <div className="flex flex-col items-center justify-center py-32 text-center">
+                <div
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
+                  style={{
+                    background: "rgba(245,158,11,0.08)",
+                    border: "1px solid rgba(245,158,11,0.15)",
+                    boxShadow: "0 0 40px rgba(245,158,11,0.05)",
+                  }}
+                >
+                  <Swords className="w-7 h-7 text-amber-500/60" />
                 </div>
-                <p className="text-zinc-400 text-sm font-semibold">Your deck is empty</p>
-                <p className="text-zinc-600 text-xs mt-1.5">Search for cards on the left to get started.</p>
+                <p className="text-zinc-300 text-sm font-semibold mb-1.5">Your deck is empty</p>
+                <p className="text-zinc-600 text-xs leading-relaxed">
+                  Search for cards on the left to start<br />building your Commander deck.
+                </p>
               </div>
             )}
           </div>
@@ -551,12 +670,10 @@ export function DeckEditor({ deckId }: Props) {
 
         {/* Right: stats */}
         <div
-          className="w-64 flex-shrink-0 border-l border-white/[0.05] overflow-y-auto"
-          style={{ background: "rgba(7,7,30,0.70)" }}
+          className="w-72 flex-shrink-0 border-l overflow-y-auto"
+          style={{ background: "rgba(6,7,30,0.60)", borderColor: "rgba(255,255,255,0.05)" }}
         >
-          <div className="p-4">
-            <DeckStats cards={deck.cards} validation={validation} />
-          </div>
+          <DeckStats cards={deck.cards} validation={validation} />
         </div>
       </div>
 

@@ -55,15 +55,6 @@ export function DeckCard({ deck }: DeckCardProps) {
         {/* Hover glow ring */}
         <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/0 group-hover:ring-amber-500/20 transition-all duration-500" />
 
-        {/* Commander crown badge — top left */}
-        {commander && (
-          <div className="absolute top-3 left-3">
-            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 shadow-lg shadow-amber-500/50">
-              <Crown className="w-3 h-3 text-zinc-950" />
-            </div>
-          </div>
-        )}
-
         {/* Color identity pips — top right */}
         {commander?.colorIdentity && commander.colorIdentity.length > 0 && (
           <div className="absolute top-3 right-3 flex gap-1">
@@ -76,6 +67,16 @@ export function DeckCard({ deck }: DeckCardProps) {
             ))}
           </div>
         )}
+
+        {/* Commander crown badge — top left */}
+        {commander && (
+          <div className="absolute top-3 left-3">
+            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 shadow-lg shadow-amber-500/50">
+              <Crown className="w-3 h-3 text-zinc-950" />
+            </div>
+          </div>
+        )}
+
 
         {/* Bottom info */}
         <div className="absolute bottom-0 inset-x-0 px-3.5 pb-4 pt-10">

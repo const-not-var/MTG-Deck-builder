@@ -3,7 +3,6 @@
 import { useState, useRef } from "react"
 import { X, Crown, CircleSlash } from "lucide-react"
 import type { CardInDeck } from "@/types"
-import { ManaCost } from "./ManaSymbol"
 import { HoloCard } from "./HoloCard"
 import { isCommanderEligible } from "@/lib/commander"
 import { getDeckLimit } from "@/lib/rules"
@@ -15,6 +14,39 @@ interface Props {
   onToggleCommander: (scryfallId: string) => void
   commanderColorIdentity: string[]
   hasCommander: boolean
+}
+
+function saltColor(s: number): string {
+  if (s < 0.5) return "#6b7280"
+  if (s < 1.5) return "#22c55e"
+  if (s < 2.5) return "#eab308"
+  if (s < 3.5) return "#f97316"
+  return "#ef4444"
+}
+
+function saltLabel(s: number): string {
+  if (s < 0.5) return "Harmless"
+  if (s < 1.5) return "Mild"
+  if (s < 2.5) return "Moderate"
+  if (s < 3.5) return "High"
+  return "Very salty"
+}
+
+function SaltPill({ salt }: { salt: number }) {
+  const color = saltColor(salt)
+  return (
+    <span
+      title={`Salt score ${salt.toFixed(2)} — ${saltLabel(salt)}\nSource: EDHREC`}
+      className="text-[9px] font-bold tabular-nums flex-shrink-0 px-1 py-0.5 rounded cursor-default select-none"
+      style={{
+        background: `${color}18`,
+        border: `1px solid ${color}35`,
+        color,
+      }}
+    >
+      🧂{salt.toFixed(1)}
+    </span>
+  )
 }
 
 export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommander, commanderColorIdentity, hasCommander }: Props) {
@@ -74,10 +106,19 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
             src={card.imageUri}
             alt={card.name}
             onError={() => setImgError(true)}
-            className="w-9 h-[52px] object-cover object-top rounded-md border border-zinc-700/80 shadow-sm"
+            className="w-10 h-[58px] object-cover object-top rounded-md shadow-sm"
+            style={{
+              border: card.isCommander
+                ? "1px solid rgba(245,158,11,0.5)"
+                : "1px solid rgba(255,255,255,0.10)",
+              boxShadow: card.isCommander ? "0 0 8px rgba(245,158,11,0.20)" : undefined,
+            }}
           />
         ) : (
-          <div className="w-9 h-[52px] bg-zinc-800 rounded-md border border-zinc-700/80 flex items-center justify-center">
+          <div
+            className="w-10 h-[58px] rounded-md flex items-center justify-center"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+          >
             <span className="text-[9px] text-zinc-500 text-center leading-tight px-0.5">
               {card.name.slice(0, 3)}
             </span>
@@ -93,13 +134,7 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
       {/* Card info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 min-w-0">
-          {/* Quantity badge for multi-copy cards */}
-          {isMultiCopy && (
-            <span className="text-xs font-bold text-amber-400 flex-shrink-0 tabular-nums">
-              {card.quantity}×
-            </span>
-          )}
-          {!isMultiCopy && card.quantity > 1 && (
+          {card.quantity > 1 && (
             <span className="text-xs font-bold text-amber-400 flex-shrink-0 tabular-nums">
               {card.quantity}×
             </span>
@@ -114,7 +149,6 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
           </span>
         </div>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-[10px] text-zinc-500 truncate">{card.typeLine.split(" — ")[0]}</span>
           {card.isFoil && card.prices?.usdFoil ? (
             <span className="text-[10px] text-blue-400/80 flex-shrink-0">${card.prices.usdFoil} ✦</span>
           ) : card.prices?.usd ? (
@@ -122,12 +156,8 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
           ) : card.prices?.usdFoil ? (
             <span className="text-[10px] text-blue-400/80 flex-shrink-0">${card.prices.usdFoil} ✦</span>
           ) : null}
+          {card.salt !== undefined && <SaltPill salt={card.salt} />}
         </div>
-      </div>
-
-      {/* Mana cost */}
-      <div className="hidden sm:flex flex-shrink-0">
-        {card.manaCost && <ManaCost cost={card.manaCost} />}
       </div>
 
       {/* Actions */}

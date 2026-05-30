@@ -54,6 +54,7 @@ export interface CardInDeck {
   isCommander: boolean
   isFoil?: boolean
   hasFoil?: boolean
+  salt?: number
 }
 
 export interface Deck {

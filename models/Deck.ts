@@ -15,6 +15,7 @@ const cardSchema = new Schema({
   imageUri: { type: String, default: "" },
   oracleText: { type: String, default: "" },
   isCommander: { type: Boolean, default: false },
+  salt: { type: Number },
   isFoil: { type: Boolean, default: false },
   hasFoil: { type: Boolean, default: false },
 })
