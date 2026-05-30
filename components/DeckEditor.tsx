@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Save, Trash2, ArrowLeft, Loader2, Check, Pencil, Swords, RefreshCw } from "lucide-react"
+import { Save, Trash2, ArrowLeft, Loader2, Check, Pencil, Swords, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
 import type { ScryfallCard, CardInDeck, Deck } from "@/types"
 import { getCardImageUri, isBasicLand } from "@/lib/scryfall"
 import { validateDeck } from "@/lib/validation"
 import { isCommanderEligible, canCoCommand, getCombinedColorIdentity, getPartnerMode, partnerModeLabel } from "@/lib/commander"
 import { getDeckLimit } from "@/lib/rules"
 import { CardSearch } from "./CardSearch"
-import { CardListItem } from "./CardListItem"
+import { CardStack, CARD_W } from "./CardStack"
 import { DeckStats } from "./DeckStats"
 
 const SECTIONS = [
@@ -61,6 +61,10 @@ export function DeckEditor({ deckId }: Props) {
   const [nameInput, setNameInput] = useState("")
   const [toasts, setToasts] = useState<Toast[]>([])
   const toastId = useRef(0)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const drag = useRef({ active: false, startX: 0, scrollLeft: 0 })
+  const [leftOpen, setLeftOpen] = useState(true)
+  const [rightOpen, setRightOpen] = useState(true)
 
   const addToast = useCallback((type: Toast["type"], message: string) => {
     const id = ++toastId.current
@@ -571,26 +575,76 @@ export function DeckEditor({ deckId }: Props) {
       <div className="flex flex-1 overflow-hidden">
         {/* Left: card search */}
         <div
-          className="w-72 flex-shrink-0 border-r flex flex-col"
-          style={{ background: "rgba(6,7,30,0.60)", borderColor: "rgba(255,255,255,0.05)" }}
+          className="flex-shrink-0 border-r flex flex-col overflow-hidden"
+          style={{
+            width: leftOpen ? 288 : 0,
+            transition: "width 0.35s cubic-bezier(0.4,0,0.2,1)",
+            background: "rgba(6,7,30,0.60)",
+            borderColor: leftOpen ? "rgba(255,255,255,0.05)" : "transparent",
+          }}
         >
-          <div className="px-4 pt-4 pb-3">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-1 h-4 rounded-full bg-amber-500/80 flex-shrink-0" />
-              <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Add Cards</span>
+          <div
+            className="flex flex-col h-full"
+            style={{ width: 288, opacity: leftOpen ? 1 : 0, transition: "opacity 0.2s", pointerEvents: leftOpen ? "auto" : "none" }}
+          >
+            <div className="px-4 pt-4 pb-3">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-1 h-4 rounded-full bg-amber-500/80 flex-shrink-0" />
+                <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Add Cards</span>
+              </div>
+              <CardSearch onCardSelect={handleCardSelect} />
             </div>
-            <CardSearch onCardSelect={handleCardSelect} />
-          </div>
-          <div className="flex-1 flex items-start justify-center p-4 pt-4">
-            <p className="text-xs text-zinc-700 text-center leading-relaxed">
-              Search above and click a<br />printing to add it to your deck.
-            </p>
+            <div className="flex-1 flex items-start justify-center p-4 pt-2">
+              <p className="text-xs text-zinc-700 text-center leading-relaxed">
+                Search above and click a<br />printing to add it to your deck.
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Center: card list */}
-        <div className="flex-1 overflow-y-auto" style={{ background: "rgba(6,7,30,0.15)" }}>
-          <div className="p-6 space-y-7 max-w-2xl">
+        {/* Center: horizontal solitaire-style card columns */}
+        <div className="flex-1 relative overflow-hidden flex flex-col" style={{ background: "rgba(6,7,30,0.15)" }}>
+          {/* Panel toggle buttons — always visible in top corners */}
+          <div className="absolute top-3 left-3 z-20">
+            <button
+              onClick={() => setLeftOpen((o) => !o)}
+              title={leftOpen ? "Collapse search" : "Expand search"}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-zinc-600 hover:text-zinc-200 transition-all hover:bg-white/[0.07]"
+              style={{ border: "1px solid rgba(255,255,255,0.06)", background: "rgba(6,7,30,0.7)", backdropFilter: "blur(8px)" }}
+            >
+              <ChevronLeft className="w-3 h-3 transition-transform duration-300" style={{ transform: leftOpen ? "rotate(0deg)" : "rotate(180deg)" }} />
+              <span className="text-[9px] font-bold uppercase tracking-widest">Search</span>
+            </button>
+          </div>
+          <div className="absolute top-3 right-3 z-20">
+            <button
+              onClick={() => setRightOpen((o) => !o)}
+              title={rightOpen ? "Collapse stats" : "Expand stats"}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-zinc-600 hover:text-zinc-200 transition-all hover:bg-white/[0.07]"
+              style={{ border: "1px solid rgba(255,255,255,0.06)", background: "rgba(6,7,30,0.7)", backdropFilter: "blur(8px)" }}
+            >
+              <span className="text-[9px] font-bold uppercase tracking-widest">Stats</span>
+              <ChevronRight className="w-3 h-3 transition-transform duration-300" style={{ transform: rightOpen ? "rotate(0deg)" : "rotate(180deg)" }} />
+            </button>
+          </div>
+
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-auto select-none"
+          style={{ cursor: drag.current.active ? "grabbing" : "grab" }}
+          onMouseDown={(e) => {
+            if ((e.target as HTMLElement).closest("button")) return
+            drag.current = { active: true, startX: e.pageX, scrollLeft: scrollRef.current?.scrollLeft ?? 0 }
+          }}
+          onMouseMove={(e) => {
+            if (!drag.current.active || !scrollRef.current) return
+            e.preventDefault()
+            scrollRef.current.scrollLeft = drag.current.scrollLeft - (e.pageX - drag.current.startX)
+          }}
+          onMouseUp={() => { drag.current.active = false }}
+          onMouseLeave={() => { drag.current.active = false }}
+        >
+          <div className="flex gap-5 p-5 pb-10 pt-12 items-start" style={{ minWidth: "max-content" }}>
             {SECTIONS.map(({ key, label, color, filter }) => {
               const sectionCards = deck.cards.filter(filter)
               if (sectionCards.length === 0) return null
@@ -601,48 +655,36 @@ export function DeckEditor({ deckId }: Props) {
               }, 0)
 
               return (
-                <div key={key}>
-                  <div className="flex items-center gap-2.5 mb-2.5 px-1">
-                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                    <span className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color }}>
-                      {label}
-                    </span>
-                    <span
-                      className="text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-md flex-shrink-0"
-                      style={{
-                        background: `${color}18`,
-                        border: `1px solid ${color}30`,
-                        color,
-                      }}
-                    >
-                      {sectionTotal}
-                    </span>
-                    <div
-                      className="flex-1 h-px"
-                      style={{ background: `linear-gradient(to right, ${color}25, transparent)` }}
-                    />
-                    <span className="text-[10px] text-zinc-500 tabular-nums">${sectionPrice.toFixed(2)}</span>
+                <div key={key} className="flex-shrink-0" style={{ width: CARD_W }}>
+                  {/* Column header */}
+                  <div className="mb-2.5">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                      <span className="text-[10px] font-bold uppercase tracking-widest truncate" style={{ color }}>
+                        {label}
+                      </span>
+                      <span
+                        className="text-[9px] font-semibold tabular-nums px-1 py-0.5 rounded flex-shrink-0"
+                        style={{ background: `${color}18`, border: `1px solid ${color}28`, color }}
+                      >
+                        {sectionTotal}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="h-px flex-1" style={{ background: `linear-gradient(to right, ${color}40, transparent)` }} />
+                      <span className="text-[9px] text-zinc-600 tabular-nums ml-1.5">${sectionPrice.toFixed(2)}</span>
+                    </div>
                   </div>
-                  <div
-                    className="space-y-0.5 rounded-xl overflow-hidden"
-                    style={{
-                      background: "rgba(255,255,255,0.02)",
-                      border: `1px solid rgba(255,255,255,0.05)`,
-                      borderTop: `2px solid ${color}28`,
-                    }}
-                  >
-                    {sectionCards.map((card) => (
-                      <CardListItem
-                        key={card.scryfallId}
-                        card={card}
-                        onRemove={handleRemove}
-                        onQuantityChange={handleQuantityChange}
-                        onToggleCommander={handleToggleCommander}
-                        commanderColorIdentity={commanderColorIdentity}
-                        hasCommander={!!commander}
-                      />
-                    ))}
-                  </div>
+
+                  {/* Solitaire card stack */}
+                  <CardStack
+                    cards={sectionCards}
+                    onRemove={handleRemove}
+                    onQuantityChange={handleQuantityChange}
+                    onToggleCommander={handleToggleCommander}
+                    commanderColorIdentity={commanderColorIdentity}
+                    hasCommander={!!commander}
+                  />
                 </div>
               )
             })}
@@ -667,13 +709,24 @@ export function DeckEditor({ deckId }: Props) {
             )}
           </div>
         </div>
+        </div>{/* end center wrapper */}
 
         {/* Right: stats */}
         <div
-          className="w-72 flex-shrink-0 border-l overflow-y-auto"
-          style={{ background: "rgba(6,7,30,0.60)", borderColor: "rgba(255,255,255,0.05)" }}
+          className="flex-shrink-0 border-l flex flex-col overflow-hidden"
+          style={{
+            width: rightOpen ? 288 : 0,
+            transition: "width 0.35s cubic-bezier(0.4,0,0.2,1)",
+            background: "rgba(6,7,30,0.60)",
+            borderColor: rightOpen ? "rgba(255,255,255,0.05)" : "transparent",
+          }}
         >
-          <DeckStats cards={deck.cards} validation={validation} />
+          <div
+            className="flex flex-col h-full overflow-y-auto"
+            style={{ width: 288, opacity: rightOpen ? 1 : 0, transition: "opacity 0.2s", pointerEvents: rightOpen ? "auto" : "none" }}
+          >
+            <DeckStats cards={deck.cards} validation={validation} />
+          </div>
         </div>
       </div>
 
