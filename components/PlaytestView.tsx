@@ -2125,11 +2125,12 @@ function OpponentsPanel({ opponents, commanders, onAdjustLife, onAdjustCmdDamage
         {opponents.map((opp, i) => {
           const isDead = opp.life <= 0
           return (
-            <div key={i} className="flex items-center gap-1 px-2 py-1 rounded-lg"
+            <div key={i} className="flex items-center justify-between px-2 py-1 rounded-lg"
               style={{
                 background: "rgba(255,255,255,0.04)",
                 border: "1px solid rgba(255,255,255,0.07)",
                 marginLeft: i > 0 ? 4 : 0,
+                minWidth: 118,
               }}>
               {/* Name */}
               {editingIdx === i ? (
@@ -2323,10 +2324,11 @@ function StatusPanel({ monarch, initiative, opponents, onSetMonarch, onSetInitia
       <div className="relative">
         <button
           onClick={e => { e.stopPropagation(); setOpenMenu(openMenu === type ? null : type) }}
-          className="flex items-center gap-1 px-2 py-1 rounded-lg transition-all"
+          className="flex items-center justify-between px-2 py-1 rounded-lg transition-all"
           style={{
             background: active ? "rgba(245,158,11,0.15)" : "rgba(255,255,255,0.04)",
             border: `1px solid ${active ? "rgba(245,158,11,0.4)" : "rgba(255,255,255,0.08)"}`,
+            minWidth: 80,
           }}>
           <span className="text-[11px]">{icon}</span>
           {active ? (
