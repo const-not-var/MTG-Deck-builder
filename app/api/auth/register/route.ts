@@ -25,7 +25,8 @@ export async function POST(req: Request) {
     await User.create({ name, email: email.toLowerCase(), password: hashed })
 
     return NextResponse.json({ message: "Account created successfully" }, { status: 201 })
-  } catch {
+  } catch (err) {
+    console.error("[register] error:", err)
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 })
   }
 }
