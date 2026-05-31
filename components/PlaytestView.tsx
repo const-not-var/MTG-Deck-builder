@@ -851,6 +851,32 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
         </button>
       </div>
 
+      {/* ── Panels strip — always between header and battlefield ──────────── */}
+      <div
+        className="flex-shrink-0 select-none"
+        style={{ background: "rgba(6,7,30,0.97)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex flex-col gap-1 px-3 py-1.5 mx-auto" style={{ maxWidth: 1230 }}>
+          <OpponentsPanel
+            opponents={ps.opponents}
+            commanders={cmdCards.current.filter(c => c.isCommander)}
+            onAdjustLife={adjustOppLife}
+            onAdjustCmdDamage={adjustCmdDamage}
+            onRename={renameOpponent}
+          />
+          <PlayerSidePanel
+            playerCounters={ps.playerCounters}
+            opponents={ps.opponents}
+            monarch={ps.monarch}
+            initiative={ps.initiative}
+            onAdjustCounter={adjustPlayerCounter}
+            onSetMonarch={setMonarch}
+            onSetInitiative={setInitiative}
+          />
+        </div>
+      </div>
+
       {/* ── Battlefield ────────────────────────────────────────────────────── */}
       <div
         ref={bfRef}
@@ -925,36 +951,6 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
             </div>
           </div>
         )}
-
-        {/* Above playmat, between mat and nav bar — opponents + player toolbox */}
-        <div
-          className="absolute flex flex-col justify-center gap-1.5"
-          style={{
-            top: 0,
-            bottom: "calc(50% + min(45%, 345px))",
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 10,
-          }}
-          onClick={e => e.stopPropagation()}
-        >
-          <OpponentsPanel
-            opponents={ps.opponents}
-            commanders={cmdCards.current.filter(c => c.isCommander)}
-            onAdjustLife={adjustOppLife}
-            onAdjustCmdDamage={adjustCmdDamage}
-            onRename={renameOpponent}
-          />
-          <PlayerSidePanel
-            playerCounters={ps.playerCounters}
-            opponents={ps.opponents}
-            monarch={ps.monarch}
-            initiative={ps.initiative}
-            onAdjustCounter={adjustPlayerCounter}
-            onSetMonarch={setMonarch}
-            onSetInitiative={setInitiative}
-          />
-        </div>
 
         {/* Battlefield permanents */}
         {ps.battlefield.map((bfc) => {
