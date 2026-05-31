@@ -49,7 +49,7 @@ export function Navbar({ userName }: NavbarProps) {
         <nav className="flex items-center gap-1">
           <Link
             href="/decks"
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            className={`hidden sm:block px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
               path === "/decks"
                 ? "text-amber-400 bg-amber-500/10 border border-amber-500/20"
                 : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60"
