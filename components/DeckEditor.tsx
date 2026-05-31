@@ -507,7 +507,7 @@ export function DeckEditor({ deckId }: Props) {
   const saltColor = totalSalt < 7 ? "#22c55e" : totalSalt < 15 ? "#14b8a6" : totalSalt < 25 ? "#eab308" : totalSalt < 40 ? "#f97316" : "#ef4444"
 
   return (
-    <div className="flex flex-col h-[calc(100vh-56px)]">
+    <div className="flex flex-col flex-1 overflow-hidden">
       {/* Editor header */}
       <div
         className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-3.5 border-b border-white/[0.06] flex-shrink-0"

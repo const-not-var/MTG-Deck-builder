@@ -28,7 +28,7 @@ export function DeckEditorWrapper({ deckId, userName }: Props) {
           backgroundSize: "28px 28px",
         }}
       />
-      <div className="relative flex flex-col min-h-screen">
+      <div className="relative flex flex-col h-screen overflow-hidden">
         <Navbar userName={userName} />
         <DeckEditor deckId={deckId} />
       </div>
