@@ -2120,17 +2120,16 @@ function OpponentsPanel({ opponents, commanders, onAdjustLife, onAdjustCmdDamage
   return (
     <div className="select-none w-full rounded-xl shadow-2xl overflow-visible"
       style={{ background: "rgba(8,8,18,0.94)", border: "1px solid rgba(255,255,255,0.08)" }}>
-      <div className="flex items-center gap-px px-2 py-1.5">
-        <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600 mr-2">Opponents</span>
+      <div className="flex items-center px-2 py-1.5">
+        <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600 flex-shrink-0 mr-2">Opponents</span>
+        <div className="flex-1 flex items-center justify-evenly gap-1.5">
         {opponents.map((opp, i) => {
           const isDead = opp.life <= 0
           return (
-            <div key={i} className="flex items-center justify-between px-2 py-1 rounded-lg"
+            <div key={i} className="flex-1 flex items-center justify-between px-2 py-1 rounded-lg"
               style={{
                 background: "rgba(255,255,255,0.04)",
                 border: "1px solid rgba(255,255,255,0.07)",
-                marginLeft: i > 0 ? 4 : 0,
-                minWidth: 118,
               }}>
               {/* Name */}
               {editingIdx === i ? (
@@ -2178,6 +2177,7 @@ function OpponentsPanel({ opponents, commanders, onAdjustLife, onAdjustCmdDamage
             </div>
           )
         })}
+        </div>
       </div>
     </div>
   )
@@ -2217,15 +2217,16 @@ function PlayerSidePanel({ playerCounters, opponents, monarch, initiative, onAdj
   return (
     <div className="select-none w-full rounded-xl shadow-2xl overflow-visible"
       style={{ background: "rgba(8,8,18,0.95)", border: "1px solid rgba(255,255,255,0.08)" }}>
-      <div className="flex items-center gap-1 px-2 py-1.5">
-        <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600 mr-1.5">Status</span>
+      <div className="flex items-center px-2 py-1.5">
+        <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600 flex-shrink-0 mr-1.5">Status</span>
+        <div className="flex-1 flex items-center justify-evenly gap-1.5">
 
         {/* Counter chips */}
         {SIDE_COUNTERS.map(({ key, icon, color, label, warn }) => {
           const val = playerCounters[key] ?? 0
           const isWarn = warn > 0 && val >= warn
           return (
-            <div key={key} className="flex items-center gap-px px-1.5 py-1 rounded-lg"
+            <div key={key} className="flex-1 flex items-center justify-between px-1.5 py-1 rounded-lg"
               style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
               <span className="text-[11px] leading-none" style={{ color: val > 0 ? color : "rgba(255,255,255,0.2)" }}>{icon}</span>
               <span className="text-[9px] text-zinc-500 leading-none mx-1">{label}</span>
@@ -2239,9 +2240,6 @@ function PlayerSidePanel({ playerCounters, opponents, monarch, initiative, onAdj
           )
         })}
 
-        {/* Divider */}
-        <div className="w-px h-4 mx-0.5" style={{ background: "rgba(255,255,255,0.07)" }} />
-
         {/* Monarch / Initiative chips */}
         {(["monarch", "initiative"] as const).map(type => {
           const holder = type === "monarch" ? monarch : initiative
@@ -2250,16 +2248,16 @@ function PlayerSidePanel({ playerCounters, opponents, monarch, initiative, onAdj
           const active = holder !== null
           const label = holderLabel(holder)
           return (
-            <div key={type} className="relative">
+            <div key={type} className="relative flex-1">
               <button
                 onClick={e => { e.stopPropagation(); setOpenMenu(openMenu === type ? null : type) }}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg transition-all"
+                className="w-full flex items-center justify-between px-2 py-1 rounded-lg transition-all"
                 style={{
                   background: active ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.04)",
                   border: `1px solid ${active ? "rgba(245,158,11,0.35)" : "rgba(255,255,255,0.07)"}`,
                 }}>
                 <span className="text-[11px] leading-none">{icon}</span>
-                <span className="text-[9px] font-semibold max-w-[48px] truncate"
+                <span className="text-[9px] font-semibold truncate mx-1"
                   style={{ color: active ? "#fbbf24" : "rgba(255,255,255,0.28)" }}>
                   {active ? label : (type === "monarch" ? "Monarch" : "Initiative")}
                 </span>
@@ -2285,6 +2283,7 @@ function PlayerSidePanel({ playerCounters, opponents, monarch, initiative, onAdj
             </div>
           )
         })}
+        </div>
       </div>
     </div>
   )
