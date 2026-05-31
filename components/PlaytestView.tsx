@@ -1292,6 +1292,8 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
         )
 
         return (
+          <>
+          <div className="fixed inset-0 z-[9998]" onClick={closeAll} />
           <div className="fixed z-[9999] rounded-xl shadow-2xl overflow-hidden py-1"
             style={{ left: bfCtx.x, top: bfCtx.y, background: "#111118", border: "1px solid rgba(255,255,255,0.10)", minWidth: 210, maxHeight: "80vh", overflowY: "auto" }}
             onClick={(e) => e.stopPropagation()}>
@@ -1304,11 +1306,14 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
           Add Custom Counter…
         </button>
           </div>
+          </>
         )
       })()}
 
       {/* ── Hand context menu ───────────────────────────────────────────────── */}
       {handCtx && (
+        <>
+        <div className="fixed inset-0 z-[9998]" onClick={closeAll} />
         <div className="fixed z-[9999] rounded-xl shadow-2xl overflow-hidden py-1"
           style={{ left: handCtx.x, top: handCtx.y, background: "#111118", border: "1px solid rgba(255,255,255,0.10)", minWidth: 160 }}
           onClick={(e) => e.stopPropagation()}>
@@ -1328,6 +1333,7 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
             </button>
           ))}
         </div>
+        </>
       )}
 
       {/* ── Zone modals ─────────────────────────────────────────────────────── */}
@@ -2202,18 +2208,21 @@ function PlayerSidePanel({ playerCounters, opponents, monarch, initiative, onAdj
                 <span className="text-[8px] text-zinc-700">▾</span>
               </button>
               {openMenu === type && (
-                <div className="absolute top-full mt-1 right-0 rounded-xl shadow-2xl overflow-hidden py-1"
-                  style={{ zIndex: 100, background: "#111118", border: "1px solid rgba(255,255,255,0.1)", minWidth: 130 }}>
-                  {players.map(p => (
-                    <button key={String(p.value)}
-                      onClick={e => { e.stopPropagation(); onSet(p.value); setOpenMenu(null) }}
-                      className="w-full text-left px-3 py-1.5 text-xs hover:bg-white/[0.07] transition-colors flex items-center gap-2"
-                      style={{ color: holder === p.value ? "#fbbf24" : "#d4d4d8" }}>
-                      {holder === p.value && <span className="text-[8px]">✓</span>}
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
+                <>
+                  <div className="fixed inset-0" style={{ zIndex: 99 }} onClick={() => setOpenMenu(null)} />
+                  <div className="absolute top-full mt-1 right-0 rounded-xl shadow-2xl overflow-hidden py-1"
+                    style={{ zIndex: 100, background: "#111118", border: "1px solid rgba(255,255,255,0.1)", minWidth: 130 }}>
+                    {players.map(p => (
+                      <button key={String(p.value)}
+                        onClick={e => { e.stopPropagation(); onSet(p.value); setOpenMenu(null) }}
+                        className="w-full text-left px-3 py-1.5 text-xs hover:bg-white/[0.07] transition-colors flex items-center gap-2"
+                        style={{ color: holder === p.value ? "#fbbf24" : "#d4d4d8" }}>
+                        {holder === p.value && <span className="text-[8px]">✓</span>}
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           )
