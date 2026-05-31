@@ -2202,7 +2202,7 @@ function PlayerSidePanel({ playerCounters, opponents, monarch, initiative, onAdj
                 <span className="text-[8px] text-zinc-700">▾</span>
               </button>
               {openMenu === type && (
-                <div className="absolute bottom-full mb-1 left-0 rounded-xl shadow-2xl overflow-hidden py-1"
+                <div className="absolute top-full mt-1 right-0 rounded-xl shadow-2xl overflow-hidden py-1"
                   style={{ zIndex: 100, background: "#111118", border: "1px solid rgba(255,255,255,0.1)", minWidth: 130 }}>
                   {players.map(p => (
                     <button key={String(p.value)}
