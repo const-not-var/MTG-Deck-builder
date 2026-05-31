@@ -1197,6 +1197,15 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
                     </div>
                   )}
 
+                  {/* Name label — inside card at bottom, always visible, covers legal text */}
+                  {activeUri && (
+                    <div className="absolute bottom-0 left-0 right-0 rounded-b-lg overflow-hidden pointer-events-none" style={{ zIndex: 3 }}>
+                      <div className="bg-black/80 px-1.5 py-1 text-center">
+                        <span className="text-[9px] text-zinc-200 leading-tight block truncate">{card.name}</span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Flip button */}
                   {card.imageUriBack && ps.mulliganPhase === "playing" && (
                     <button
@@ -1221,9 +1230,6 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
                     </div>
                   )}
                 </div>
-                <span className="text-[9px] text-zinc-600 truncate text-center leading-tight select-none" style={{ maxWidth: W }}>
-                  {card.name}
-                </span>
               </div>
             )
           })}
