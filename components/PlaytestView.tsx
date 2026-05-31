@@ -1151,8 +1151,11 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
       <div ref={handZoneRef} className="flex-shrink-0 select-none"
         style={{
           background: "#06070e",
-          paddingTop: 8,
-          paddingBottom: "max(10px, env(safe-area-inset-bottom))",
+          paddingTop: 12,
+          paddingBottom: "max(12px, env(safe-area-inset-bottom))",
+          marginTop: -36,
+          position: "relative",
+          zIndex: 1,
         }}>
         {/* Bubble — same width as the playmat */}
         <div className="mx-auto" style={{
