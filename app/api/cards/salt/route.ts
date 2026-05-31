@@ -51,7 +51,6 @@ export async function POST(req: Request) {
             `https://json.edhrec.com/pages/cards/${slug}.json`,
             {
               headers: { "User-Agent": "Commander Vault/1.0" },
-              // @ts-expect-error — Next.js-specific fetch cache option
               next: { revalidate: 86400 },
             }
           )
