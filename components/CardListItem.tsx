@@ -258,6 +258,7 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
                 imgStyle={{ borderRadius: "5%" }}
                 imgClassName="w-full"
                 foil={!!card.isFoil}
+                mobileAnimate={isMobile && !!card.isFoil}
               />
             </div>
           </div>
