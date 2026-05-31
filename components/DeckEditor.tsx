@@ -509,7 +509,7 @@ export function DeckEditor({ deckId }: Props) {
   return (
     <div
       className="flex flex-col flex-1"
-      style={{ overflowX: "hidden", overflowY: isMobile && mobileTab === "cards" ? "auto" : "hidden" }}
+      style={{ overflowX: "hidden", overflowY: isMobile && mobileTab === "cards" ? "auto" : "hidden", overscrollBehavior: "contain" }}
     >
       {/* Editor header */}
       <div

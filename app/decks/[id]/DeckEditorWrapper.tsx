@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { Navbar } from "@/components/Navbar"
 import { DeckEditor } from "@/components/DeckEditor"
 
@@ -9,8 +10,18 @@ interface Props {
 }
 
 export function DeckEditorWrapper({ deckId, userName }: Props) {
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    document.documentElement.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = prev
+      document.documentElement.style.overflow = ""
+    }
+  }, [])
+
   return (
-    <div className="h-screen overflow-hidden flex flex-col" style={{ background: "#06071e" }}>
+    <div className="fixed inset-0 flex flex-col" style={{ background: "#06071e" }}>
       <div
         className="fixed inset-0 pointer-events-none"
         style={{

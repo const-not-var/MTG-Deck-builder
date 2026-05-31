@@ -14,7 +14,7 @@ export function Navbar({ userName }: NavbarProps) {
 
   return (
     <header
-      className="fixed top-0 inset-x-0 z-40"
+      className="fixed top-0 inset-x-0 z-[60]"
       style={{
         background: "rgba(7,7,30,0.82)",
         backdropFilter: "blur(24px)",
