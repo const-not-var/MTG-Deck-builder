@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { X, Crown, CircleSlash } from "lucide-react"
 import type { CardInDeck } from "@/types"
 import { HoloCard } from "./HoloCard"
@@ -17,19 +17,19 @@ interface Props {
 }
 
 function saltColor(s: number): string {
-  if (s < 0.5) return "#6b7280"
-  if (s < 1.5) return "#22c55e"
-  if (s < 2.5) return "#eab308"
-  if (s < 3.5) return "#f97316"
+  if (s < 0.3) return "#6b7280"
+  if (s < 1.0) return "#22c55e"
+  if (s < 1.8) return "#eab308"
+  if (s < 2.5) return "#f97316"
   return "#ef4444"
 }
 
 function saltLabel(s: number): string {
-  if (s < 0.5) return "Harmless"
-  if (s < 1.5) return "Mild"
-  if (s < 2.5) return "Moderate"
-  if (s < 3.5) return "High"
-  return "Very salty"
+  if (s < 0.3) return "Harmless"
+  if (s < 1.0) return "Low"
+  if (s < 1.8) return "Moderate"
+  if (s < 2.5) return "High"
+  return "Very Salty"
 }
 
 function SaltPill({ salt }: { salt: number }) {
@@ -53,14 +53,30 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
   const [imgError, setImgError] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 })
-  const hideRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hideRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const showRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const scheduleHide = () => {
-    hideRef.current = setTimeout(() => setShowPreview(false), 120)
-  }
-  const cancelHide = () => {
+  // Clear all timers on unmount to prevent state updates on unmounted component
+  useEffect(() => () => {
     if (hideRef.current) clearTimeout(hideRef.current)
-  }
+    if (showRef.current) clearTimeout(showRef.current)
+  }, [])
+
+  const scheduleHide = useCallback(() => {
+    if (showRef.current) { clearTimeout(showRef.current); showRef.current = null }
+    hideRef.current = setTimeout(() => setShowPreview(false), 120)
+  }, [])
+
+  const cancelHide = useCallback(() => {
+    if (hideRef.current) clearTimeout(hideRef.current)
+  }, [])
+
+  const scheduleShow = useCallback((x: number, y: number) => {
+    cancelHide()
+    setHoverPos({ x, y })
+    if (showPreview) return
+    showRef.current = setTimeout(() => setShowPreview(true), 80)
+  }, [cancelHide, showPreview])
 
   const isColorViolation =
     hasCommander &&
@@ -97,8 +113,8 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
       {/* Thumbnail */}
       <div
         className="relative flex-shrink-0 cursor-pointer"
-        onMouseEnter={(e) => { cancelHide(); setHoverPos({ x: e.clientX, y: e.clientY }); setShowPreview(true) }}
-        onMouseMove={(e) => setHoverPos({ x: e.clientX, y: e.clientY })}
+        onMouseEnter={(e) => scheduleShow(e.clientX, e.clientY)}
+        onMouseMove={(e) => { if (showPreview) setHoverPos({ x: e.clientX, y: e.clientY }) }}
         onMouseLeave={scheduleHide}
       >
         {card.imageUri && !imgError ? (

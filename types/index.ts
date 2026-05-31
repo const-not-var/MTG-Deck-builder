@@ -35,6 +35,10 @@ export interface ScryfallCard {
   foil?: boolean
   nonfoil?: boolean
   released_at?: string
+  purchase_uris?: {
+    tcgplayer?: string
+    cardkingdom?: string
+  }
 }
 
 export interface CardInDeck {
@@ -50,11 +54,16 @@ export interface CardInDeck {
     usdFoil?: string
   }
   imageUri: string
+  imageUriBack?: string
   oracleText?: string
   isCommander: boolean
+  isCompanion?: boolean
   isFoil?: boolean
   hasFoil?: boolean
   salt?: number
+  tcgplayerUrl?: string
+  cardKingdomUrl?: string
+  loyalty?: string
 }
 
 export interface Deck {

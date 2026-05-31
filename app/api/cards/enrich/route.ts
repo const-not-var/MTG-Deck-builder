@@ -5,6 +5,10 @@ export interface EnrichedCard {
   oracleText: string
   typeLine: string
   colorIdentity: string[]
+  tcgplayerUrl?: string
+  cardKingdomUrl?: string
+  imageUriBack?: string
+  loyalty?: string
 }
 
 /**
@@ -53,6 +57,10 @@ export async function POST(req: Request) {
           oracleText,
           typeLine: card.type_line ?? "",
           colorIdentity: card.color_identity ?? [],
+          tcgplayerUrl: card.purchase_uris?.tcgplayer,
+          cardKingdomUrl: card.purchase_uris?.cardkingdom,
+          imageUriBack: card.card_faces?.[1]?.image_uris?.normal,
+          loyalty: card.loyalty,
         }
       }
     } catch {

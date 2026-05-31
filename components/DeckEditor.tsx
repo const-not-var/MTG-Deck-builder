@@ -2,32 +2,36 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Save, Trash2, ArrowLeft, Loader2, Check, Pencil, Swords, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
+import { Save, Trash2, ArrowLeft, Loader2, Check, Pencil, Swords, RefreshCw, ChevronLeft, ChevronRight, FlaskConical } from "lucide-react"
 import type { ScryfallCard, CardInDeck, Deck } from "@/types"
-import { getCardImageUri, isBasicLand } from "@/lib/scryfall"
+import { getCardImageUri, getCardImageUriBack, isBasicLand } from "@/lib/scryfall"
 import { validateDeck } from "@/lib/validation"
 import { isCommanderEligible, canCoCommand, getCombinedColorIdentity, getPartnerMode, partnerModeLabel } from "@/lib/commander"
+import { isCompanionCard } from "@/lib/companion"
 import { getDeckLimit } from "@/lib/rules"
 import { CardSearch } from "./CardSearch"
 import { CardStack, CARD_W } from "./CardStack"
 import { DeckStats } from "./DeckStats"
+import { PlaytestView } from "./PlaytestView"
 
 const SECTIONS = [
   { key: "commander",     label: "Commander",     color: "#f59e0b", filter: (c: CardInDeck) => c.isCommander },
-  { key: "creatures",     label: "Creatures",     color: "#34d399", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Creature") && !c.typeLine.includes("Land") },
-  { key: "planeswalkers", label: "Planeswalkers", color: "#a78bfa", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Planeswalker") && !c.typeLine.includes("Creature") },
-  { key: "battles",       label: "Battles",       color: "#f87171", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Battle") && !c.typeLine.includes("Creature") },
-  { key: "instants",      label: "Instants",      color: "#38bdf8", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Instant") },
-  { key: "sorceries",     label: "Sorceries",     color: "#fb923c", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Sorcery") },
+  { key: "companion",     label: "Companion",     color: "#818cf8", filter: (c: CardInDeck) => !!c.isCompanion },
+  { key: "creatures",     label: "Creatures",     color: "#34d399", filter: (c: CardInDeck) => !c.isCommander && !c.isCompanion && c.typeLine.includes("Creature") && !c.typeLine.includes("Land") },
+  { key: "planeswalkers", label: "Planeswalkers", color: "#a78bfa", filter: (c: CardInDeck) => !c.isCommander && !c.isCompanion && c.typeLine.includes("Planeswalker") && !c.typeLine.includes("Creature") },
+  { key: "battles",       label: "Battles",       color: "#f87171", filter: (c: CardInDeck) => !c.isCommander && !c.isCompanion && c.typeLine.includes("Battle") && !c.typeLine.includes("Creature") },
+  { key: "instants",      label: "Instants",      color: "#38bdf8", filter: (c: CardInDeck) => !c.isCommander && !c.isCompanion && c.typeLine.includes("Instant") },
+  { key: "sorceries",     label: "Sorceries",     color: "#fb923c", filter: (c: CardInDeck) => !c.isCommander && !c.isCompanion && c.typeLine.includes("Sorcery") },
   // Exclude Creatures, Enchantments, and Lands so artifact versions of those go to their own section
-  { key: "artifacts",     label: "Artifacts",     color: "#a1a1aa", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Artifact") && !c.typeLine.includes("Creature") && !c.typeLine.includes("Enchantment") && !c.typeLine.includes("Land") },
-  { key: "enchantments",  label: "Enchantments",  color: "#2dd4bf", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Enchantment") && !c.typeLine.includes("Creature") && !c.typeLine.includes("Artifact") },
-  { key: "lands",         label: "Lands",         color: "#d97706", filter: (c: CardInDeck) => !c.isCommander && c.typeLine.includes("Land") },
+  { key: "artifacts",     label: "Artifacts",     color: "#a1a1aa", filter: (c: CardInDeck) => !c.isCommander && !c.isCompanion && c.typeLine.includes("Artifact") && !c.typeLine.includes("Creature") && !c.typeLine.includes("Enchantment") && !c.typeLine.includes("Land") },
+  { key: "enchantments",  label: "Enchantments",  color: "#2dd4bf", filter: (c: CardInDeck) => !c.isCommander && !c.isCompanion && c.typeLine.includes("Enchantment") && !c.typeLine.includes("Creature") && !c.typeLine.includes("Artifact") },
+  { key: "lands",         label: "Lands",         color: "#d97706", filter: (c: CardInDeck) => !c.isCommander && !c.isCompanion && c.typeLine.includes("Land") },
   // Catch-all for any card type not covered above (e.g. future types)
   {
     key: "other", label: "Other", color: "#6b7280",
     filter: (c: CardInDeck) =>
       !c.isCommander &&
+      !c.isCompanion &&
       !c.typeLine.includes("Creature") &&
       !c.typeLine.includes("Planeswalker") &&
       !c.typeLine.includes("Battle") &&
@@ -65,6 +69,7 @@ export function DeckEditor({ deckId }: Props) {
   const drag = useRef({ active: false, startX: 0, scrollLeft: 0 })
   const [leftOpen, setLeftOpen] = useState(true)
   const [rightOpen, setRightOpen] = useState(true)
+  const [playtesting, setPlaytesting] = useState(false)
 
   const addToast = useCallback((type: Toast["type"], message: string) => {
     const id = ++toastId.current
@@ -105,9 +110,10 @@ export function DeckEditor({ deckId }: Props) {
         setDeck(data.deck)
         setNameInput(data.deck.name)
 
-        // Backfill oracleText for cards saved before that field existed.
-        const missingIds: string[] = (data.deck.cards as { scryfallId: string; oracleText?: string }[])
-          .filter((c) => !c.oracleText)
+        // Backfill fields added after initial save (oracleText, purchase URLs, back-face image, loyalty).
+        // imageUriBack is only present on DFCs — use oracleText/tcgplayerUrl absence as the trigger.
+        const missingIds: string[] = (data.deck.cards as { scryfallId: string; oracleText?: string; tcgplayerUrl?: string; imageUriBack?: string; typeLine?: string; loyalty?: string }[])
+          .filter((c) => !c.oracleText || !c.tcgplayerUrl || c.imageUriBack === undefined || (/planeswalker/i.test(c.typeLine ?? "") && !c.loyalty))
           .map((c) => c.scryfallId)
 
         if (missingIds.length > 0) {
@@ -130,6 +136,10 @@ export function DeckEditor({ deckId }: Props) {
                       ...c,
                       oracleText: e.oracleText,
                       typeLine: e.typeLine || c.typeLine,
+                      tcgplayerUrl: e.tcgplayerUrl ?? c.tcgplayerUrl,
+                      cardKingdomUrl: e.cardKingdomUrl ?? c.cardKingdomUrl,
+                      imageUriBack: e.imageUriBack ?? c.imageUriBack,
+                      loyalty: e.loyalty ?? c.loyalty,
                       colorIdentity: e.colorIdentity.length > 0 ? e.colorIdentity : c.colorIdentity,
                     }
                   }),
@@ -222,10 +232,14 @@ export function DeckEditor({ deckId }: Props) {
       manaCost: card.mana_cost ?? "",
       prices: { usd: usd ?? undefined, usdFoil: usdFoil ?? undefined },
       imageUri: getCardImageUri(card),
+      imageUriBack: getCardImageUriBack(card),
       oracleText: card.oracle_text ?? "",
       isCommander: false,
       isFoil,
       hasFoil: card.foil === true || !!card.prices?.usd_foil,
+      tcgplayerUrl: card.purchase_uris?.tcgplayer,
+      cardKingdomUrl: card.purchase_uris?.cardkingdom,
+      loyalty: card.loyalty,
     }
 
     setDeck((d) => d ? { ...d, cards: [...d.cards, newCard] } : d)
@@ -334,6 +348,39 @@ export function DeckEditor({ deckId }: Props) {
     setSaved(false)
   }, [addToast])
 
+  const handleToggleCompanion = useCallback((scryfallId: string) => {
+    setDeck((d) => {
+      if (!d) return d
+      const target = d.cards.find((c) => c.scryfallId === scryfallId)
+      if (!target) return d
+
+      // Unsetting companion — always allowed
+      if (target.isCompanion) {
+        return { ...d, cards: d.cards.map((c) => c.scryfallId === scryfallId ? { ...c, isCompanion: false } : c) }
+      }
+
+      if (!isCompanionCard(target)) {
+        addToast("error", `${target.name} does not have the Companion ability.`)
+        return d
+      }
+
+      const currentCompanions = d.cards.filter((c) => c.isCompanion)
+      if (currentCompanions.length >= 1) {
+        addToast("error", "A deck can only have one companion. Remove the existing one first.")
+        return d
+      }
+
+      // A card cannot be both commander and companion
+      return {
+        ...d,
+        cards: d.cards.map((c) =>
+          c.scryfallId === scryfallId ? { ...c, isCompanion: true, isCommander: false } : c
+        ),
+      }
+    })
+    setSaved(false)
+  }, [addToast])
+
   const handleSave = async () => {
     if (!deck) return
     setSaving(true)
@@ -398,6 +445,10 @@ export function DeckEditor({ deckId }: Props) {
               ...c,
               oracleText: e.oracleText,
               typeLine: e.typeLine || c.typeLine,
+              tcgplayerUrl: e.tcgplayerUrl ?? c.tcgplayerUrl,
+              cardKingdomUrl: e.cardKingdomUrl ?? c.cardKingdomUrl,
+              imageUriBack: e.imageUriBack ?? c.imageUriBack,
+              loyalty: e.loyalty ?? c.loyalty,
               colorIdentity: e.colorIdentity.length > 0 ? e.colorIdentity : c.colorIdentity,
             }
           }),
@@ -437,12 +488,13 @@ export function DeckEditor({ deckId }: Props) {
   const validation = validateDeck(deck.cards)
   const commander = deck.cards.find((c) => c.isCommander)
   const allCommanders = deck.cards.filter((c) => c.isCommander)
+  const companion = deck.cards.find((c) => c.isCompanion)
   const commanderColorIdentity = getCombinedColorIdentity(allCommanders)
 
   const saltedCards = deck.cards.filter((c) => c.salt !== undefined)
-  const totalSalt = saltedCards.reduce((s, c) => s + (c.salt ?? 0) * c.quantity, 0)
+  const totalSalt = saltedCards.reduce((s, c) => s + (c.salt ?? 0), 0)
   const saltLoaded = saltedCards.length > 0
-  const saltColor = totalSalt < 5 ? "#22c55e" : totalSalt < 15 ? "#eab308" : totalSalt < 30 ? "#f97316" : "#ef4444"
+  const saltColor = totalSalt < 7 ? "#22c55e" : totalSalt < 15 ? "#14b8a6" : totalSalt < 25 ? "#eab308" : totalSalt < 40 ? "#f97316" : "#ef4444"
 
   return (
     <div className="flex flex-col h-[calc(100vh-56px)]">
@@ -519,15 +571,22 @@ export function DeckEditor({ deckId }: Props) {
 
           {/* Card count */}
           <div className="flex flex-col items-end gap-1">
-            <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold tabular-nums ${
-              validation.cardCount === 100
-                ? "bg-green-500/15 text-green-400 border border-green-500/25"
-                : validation.cardCount > 100
-                ? "bg-red-500/15 text-red-400 border border-red-500/25"
-                : "bg-white/[0.06] text-zinc-400 border border-white/[0.08]"
-            }`}>
-              {validation.cardCount}/100
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold tabular-nums ${
+                validation.cardCount === 100
+                  ? "bg-green-500/15 text-green-400 border border-green-500/25"
+                  : validation.cardCount > 100
+                  ? "bg-red-500/15 text-red-400 border border-red-500/25"
+                  : "bg-white/[0.06] text-zinc-400 border border-white/[0.08]"
+              }`}>
+                {validation.cardCount}/100
+              </span>
+              {companion && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "rgba(129,140,248,0.15)", border: "1px solid rgba(129,140,248,0.3)", color: "#818cf8" }}>
+                  +C
+                </span>
+              )}
+            </div>
             <div className="w-20 h-1 bg-white/[0.06] rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
@@ -538,6 +597,14 @@ export function DeckEditor({ deckId }: Props) {
               />
             </div>
           </div>
+
+          <button
+            onClick={() => setPlaytesting(true)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.07] border border-white/[0.07] transition-all"
+          >
+            <FlaskConical className="w-3.5 h-3.5" />
+            Playtest
+          </button>
 
           <button
             onClick={handleSave}
@@ -682,6 +749,7 @@ export function DeckEditor({ deckId }: Props) {
                     onRemove={handleRemove}
                     onQuantityChange={handleQuantityChange}
                     onToggleCommander={handleToggleCommander}
+                    onToggleCompanion={handleToggleCompanion}
                     commanderColorIdentity={commanderColorIdentity}
                     hasCommander={!!commander}
                   />
@@ -729,6 +797,9 @@ export function DeckEditor({ deckId }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Playtester overlay */}
+      {playtesting && <PlaytestView cards={deck.cards} onClose={() => setPlaytesting(false)} />}
 
       {/* Toast notifications */}
       <div className="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none">

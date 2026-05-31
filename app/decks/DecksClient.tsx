@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Loader2, Swords, X } from "lucide-react"
+import { Plus, Loader2, Swords, X, Library } from "lucide-react"
 import type { Deck } from "@/types"
 import { Navbar } from "@/components/Navbar"
 import { DeckCard } from "@/components/DeckCard"
@@ -99,8 +99,10 @@ export function DecksClient({ userName }: Props) {
 
         <main className="flex-1 max-w-7xl mx-auto w-full px-6 pb-14">
           {loading ? (
-            <div className="flex items-center justify-center py-32">
-              <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <div key={i} className="skeleton rounded-2xl animate-fade-in" style={{ aspectRatio: "3/4", animationDelay: `${i * 40}ms` }} />
+              ))}
             </div>
           ) : decks.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-32 text-center animate-fade-up">

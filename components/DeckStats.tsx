@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import { AlertCircle, CheckCircle2, AlertTriangle, TrendingUp } from "lucide-react"
 import type { CardInDeck, DeckValidation } from "@/types"
 import { ManaCurve } from "./ManaCurve"
@@ -21,28 +22,44 @@ interface Props {
 }
 
 export function DeckStats({ cards, validation }: Props) {
-  const totalPrice = cards.reduce((s, c) => {
+  const totalPrice = useMemo(() => cards.reduce((s, c) => {
     const p = parseFloat((c.isFoil ? c.prices?.usdFoil : c.prices?.usd) ?? c.prices?.usdFoil ?? c.prices?.usd ?? "0")
     return s + (isNaN(p) ? 0 : p * c.quantity)
-  }, 0)
+  }, 0), [cards])
 
-  const commanders = cards.filter((c) => c.isCommander)
-  const nonLandCards = cards.filter((c) => !c.typeLine.includes("Land"))
-  const nonLandCount = nonLandCards.reduce((s, c) => s + c.quantity, 0)
-  const avgCmc = nonLandCount > 0
-    ? nonLandCards.reduce((s, c) => s + c.cmc * c.quantity, 0) / nonLandCount
-    : 0
+  const commanders = useMemo(() => cards.filter((c) => c.isCommander), [cards])
+
+  const { avgCmc } = useMemo(() => {
+    const nonLand = cards.filter((c) => !c.typeLine.includes("Land"))
+    const count = nonLand.reduce((s, c) => s + c.quantity, 0)
+    const avg = count > 0 ? nonLand.reduce((s, c) => s + c.cmc * c.quantity, 0) / count : 0
+    return { avgCmc: avg }
+  }, [cards])
+
+  const typeCounts = useMemo(() => {
+    const counts = CARD_TYPES.map(({ label, color, test }) => ({
+      label, color,
+      count: cards.filter(test).reduce((s, c) => s + c.quantity, 0),
+    })).filter((t) => t.count > 0)
+    return counts
+  }, [cards])
+
+  const saltStats = useMemo(() => {
+    const salted = cards.filter((c) => c.salt !== undefined)
+    const total = salted.reduce((s, c) => s + (c.salt ?? 0), 0)
+    const avg = salted.length > 0 ? total / salted.length : 0
+    const pct = Math.min((total / 50) * 100, 100)
+    const color = total < 7 ? "#22c55e" : total < 15 ? "#14b8a6" : total < 25 ? "#eab308" : total < 40 ? "#f97316" : "#ef4444"
+    const label = total < 7 ? "Pristine" : total < 15 ? "Casual" : total < 25 ? "Focused" : total < 40 ? "Competitive" : "Very Salty"
+    const top3 = [...salted].sort((a, b) => (b.salt ?? 0) - (a.salt ?? 0)).slice(0, 3)
+    return { salted, total, avg, pct, color, label, top3 }
+  }, [cards])
+
+  const maxTypeCount = useMemo(() => Math.max(...typeCounts.map((t) => t.count), 1), [typeCounts])
 
   const progress = Math.min((validation.cardCount / 100) * 100, 100)
   const isComplete = validation.cardCount === 100
   const isOver = validation.cardCount > 100
-
-  const typeCounts = CARD_TYPES.map(({ label, color, test }) => ({
-    label, color,
-    count: cards.filter(test).reduce((s, c) => s + c.quantity, 0),
-  })).filter((t) => t.count > 0)
-
-  const maxTypeCount = Math.max(...typeCounts.map((t) => t.count), 1)
 
   const primaryCommander = commanders[0]
   const artCropUri = primaryCommander?.imageUri?.replace("/normal/", "/art_crop/")
@@ -124,84 +141,54 @@ export function DeckStats({ cards, validation }: Props) {
       </div>
 
       {/* Deck salt */}
-      {(() => {
-        const salted = cards.filter((c) => c.salt !== undefined)
-        const totalSalt = salted.reduce((s, c) => s + (c.salt ?? 0) * c.quantity, 0)
-        const totalQty = salted.reduce((s, c) => s + c.quantity, 0)
-        const avg = totalQty > 0 ? totalSalt / totalQty : 0
-        const coverage = cards.length > 0 ? Math.round((salted.length / cards.length) * 100) : 0
-        const maxPossibleSalt = totalQty * 4
-        const pct = maxPossibleSalt > 0 ? Math.min((totalSalt / maxPossibleSalt) * 100, 100) : 0
-        const color = totalSalt < 5 ? "#22c55e" : totalSalt < 15 ? "#eab308" : totalSalt < 30 ? "#f97316" : "#ef4444"
-        const label = totalSalt < 5 ? "Harmless" : totalSalt < 15 ? "Mild" : totalSalt < 30 ? "Spicy" : "Very Salty"
-        return (
-          <div
-            className="rounded-xl p-3"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
-          >
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-0.5">🧂 Deck Salt</p>
-                <p className="text-[10px] text-zinc-600">Source: EDHREC</p>
-              </div>
-              <div className="text-right">
-                <p
-                  className="text-2xl font-bold tabular-nums leading-none"
-                  style={{ color: salted.length > 0 ? color : "#52525b" }}
-                >
-                  {salted.length > 0 ? totalSalt.toFixed(1) : "—"}
-                </p>
-                <p className="text-[10px] mt-0.5" style={{ color: salted.length > 0 ? color : "#52525b" }}>
-                  {salted.length > 0 ? label : "loading…"}
-                </p>
-              </div>
+      <div className="rounded-xl p-3"
+        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-0.5">🧂 Deck Salt</p>
+            <p className="text-[10px] text-zinc-600">via EDHREC</p>
+          </div>
+          <div className="text-right">
+            <p className="text-2xl font-bold tabular-nums leading-none"
+              style={{ color: saltStats.salted.length > 0 ? saltStats.color : "#52525b" }}>
+              {saltStats.salted.length > 0 ? saltStats.total.toFixed(1) : "—"}
+            </p>
+            <p className="text-[10px] mt-0.5"
+              style={{ color: saltStats.salted.length > 0 ? saltStats.color : "#52525b" }}>
+              {saltStats.salted.length > 0 ? saltStats.label : "loading…"}
+            </p>
+          </div>
+        </div>
+
+        {saltStats.salted.length > 0 && (
+          <>
+            <div className="h-1.5 rounded-full overflow-hidden mb-2" style={{ background: "rgba(255,255,255,0.06)" }}>
+              <div className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${saltStats.pct}%`, backgroundColor: saltStats.color }} />
             </div>
-
-            {salted.length > 0 && (
-              <>
-                <div className="h-2 rounded-full overflow-hidden mb-2.5" style={{ background: "rgba(255,255,255,0.06)" }}>
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${pct}%`, backgroundColor: color }}
-                  />
-                </div>
-                <div className="flex items-center justify-between text-[10px] text-zinc-500">
-                  <span>avg {avg.toFixed(2)}/card</span>
-                  <span>{coverage}% scored</span>
-                </div>
-
-                {/* Top salty cards */}
-                {(() => {
-                  const top = [...salted]
-                    .sort((a, b) => (b.salt ?? 0) - (a.salt ?? 0))
-                    .slice(0, 3)
-                  if (top.length === 0) return null
+            <p className="text-[10px] text-zinc-600">avg {saltStats.avg.toFixed(2)}/card</p>
+            {saltStats.top3.length > 0 && (
+              <div className="mt-3 space-y-1.5">
+                <p className="text-[10px] text-zinc-600 uppercase tracking-wider font-medium">Saltiest Cards</p>
+                {saltStats.top3.map((c) => {
+                  const sc = (c.salt ?? 0) < 1.0 ? "#22c55e" : (c.salt ?? 0) < 1.8 ? "#eab308" : (c.salt ?? 0) < 2.5 ? "#f97316" : "#ef4444"
                   return (
-                    <div className="mt-3 space-y-1.5">
-                      <p className="text-[10px] text-zinc-600 uppercase tracking-wider font-medium">Saltiest Cards</p>
-                      {top.map((c) => {
-                        const sc = (c.salt ?? 0) < 1.5 ? "#22c55e" : (c.salt ?? 0) < 2.5 ? "#eab308" : (c.salt ?? 0) < 3.5 ? "#f97316" : "#ef4444"
-                        return (
-                          <div key={c.scryfallId} className="flex items-center justify-between gap-2">
-                            <span className="text-[10px] text-zinc-400 truncate">{c.name}</span>
-                            <span className="text-[10px] font-bold tabular-nums flex-shrink-0" style={{ color: sc }}>
-                              {(c.salt ?? 0).toFixed(2)}
-                            </span>
-                          </div>
-                        )
-                      })}
+                    <div key={c.scryfallId} className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] text-zinc-400 truncate">{c.name}</span>
+                      <span className="text-[10px] font-bold tabular-nums flex-shrink-0" style={{ color: sc }}>
+                        {(c.salt ?? 0).toFixed(2)}
+                      </span>
                     </div>
                   )
-                })()}
-              </>
+                })}
+              </div>
             )}
-
-            {salted.length === 0 && cards.length > 0 && (
-              <p className="text-[10px] text-zinc-600 text-center py-1">Fetching salt scores…</p>
-            )}
-          </div>
-        )
-      })()}
+          </>
+        )}
+        {saltStats.salted.length === 0 && cards.length > 0 && (
+          <p className="text-[10px] text-zinc-600 text-center py-1">Fetching salt scores…</p>
+        )}
+      </div>
 
       {/* Avg CMC */}
       <div className="flex items-center justify-between">

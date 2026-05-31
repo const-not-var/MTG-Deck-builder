@@ -13,11 +13,16 @@ const cardSchema = new Schema({
     usdFoil: String,
   },
   imageUri: { type: String, default: "" },
+  imageUriBack: { type: String },
   oracleText: { type: String, default: "" },
   isCommander: { type: Boolean, default: false },
+  isCompanion: { type: Boolean, default: false },
   salt: { type: Number },
   isFoil: { type: Boolean, default: false },
   hasFoil: { type: Boolean, default: false },
+  tcgplayerUrl: { type: String },
+  cardKingdomUrl: { type: String },
+  loyalty: { type: String },
 })
 
 const deckSchema = new Schema(

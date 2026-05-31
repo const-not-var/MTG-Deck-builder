@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts"
 import type { CardInDeck } from "@/types"
 
@@ -8,29 +9,23 @@ interface Props {
 }
 
 export function ManaCurve({ cards }: Props) {
-  const buckets: Record<number, number> = {}
-  for (let i = 0; i <= 7; i++) buckets[i] = 0
-
-  for (const card of cards) {
-    if (card.typeLine.includes("Land")) continue
-    const cmc = Math.min(card.cmc, 7)
-    buckets[cmc] = (buckets[cmc] ?? 0) + card.quantity
-  }
-
-  const data = Object.entries(buckets).map(([cmc, count]) => ({
-    cmc: cmc === "7" ? "7+" : cmc,
-    count,
-  }))
-
-  const max = Math.max(...data.map((d) => d.count), 1)
+  const { data, max } = useMemo(() => {
+    const buckets: number[] = Array(8).fill(0)
+    for (const card of cards) {
+      if (card.typeLine.includes("Land")) continue
+      buckets[Math.min(Math.floor(card.cmc), 7)] += card.quantity
+    }
+    const d = buckets.map((count, i) => ({ cmc: i === 7 ? "7+" : String(i), count }))
+    return { data: d, max: Math.max(...d.map((d) => d.count), 1) }
+  }, [cards])
 
   return (
     <div className="w-full h-28">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 4, right: 0, left: -28, bottom: 0 }} barCategoryGap="20%">
+        <BarChart data={data} margin={{ top: 4, right: 0, left: -28, bottom: 0 }} barCategoryGap="22%">
           <XAxis
             dataKey="cmc"
-            tick={{ fill: "#71717a", fontSize: 11 }}
+            tick={{ fill: "#71717a", fontSize: 10 }}
             axisLine={false}
             tickLine={false}
           />
@@ -44,18 +39,22 @@ export function ManaCurve({ cards }: Props) {
           <Tooltip
             cursor={{ fill: "rgba(255,255,255,0.04)" }}
             contentStyle={{
-              background: "#18181b",
-              border: "1px solid #3f3f46",
-              borderRadius: "6px",
+              background: "#111118",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: "8px",
               fontSize: "12px",
               color: "#e4e4e7",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
             }}
             formatter={(val) => [Number(val), "Cards"]}
             labelFormatter={(l) => `CMC ${l}`}
           />
           <Bar dataKey="count" radius={[3, 3, 0, 0]}>
             {data.map((entry, i) => (
-              <Cell key={i} fill={entry.count === max && entry.count > 0 ? "#f59e0b" : "#3f3f46"} />
+              <Cell
+                key={i}
+                fill={entry.count === max && entry.count > 0 ? "#f59e0b" : "rgba(255,255,255,0.1)"}
+              />
             ))}
           </Bar>
         </BarChart>

@@ -44,7 +44,9 @@ export async function POST(req: Request) {
     await Promise.allSettled(
       batch.map(async (name) => {
         try {
-          const slug = toEdhrecSlug(name)
+          // DFCs have names like "Front // Back" — EDHREC only knows the front face
+          const frontName = name.includes(" // ") ? name.split(" // ")[0].trim() : name
+          const slug = toEdhrecSlug(frontName)
           const res = await fetch(
             `https://json.edhrec.com/pages/cards/${slug}.json`,
             {

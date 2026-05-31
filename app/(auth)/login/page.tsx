@@ -24,26 +24,34 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center px-4">
-      <div className="absolute inset-0 z-0">
-        <img
-          src="https://cards.scryfall.io/art_crop/front/4/a/4a1f905f-1d55-4d02-9d24-e58070793d3f.jpg?1717951088"
-          alt=""
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(9,9,11,0.88) 0%, rgba(15,10,30,0.80) 100%)" }} />
+    <div className="min-h-screen relative flex items-center justify-center px-4 overflow-hidden">
+      {/* Branded background */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0" style={{
+          background: [
+            "radial-gradient(ellipse 100% 80% at 15% 90%, rgba(109,40,217,0.3) 0%, transparent 60%)",
+            "radial-gradient(ellipse 70% 60% at 85% 10%, rgba(245,158,11,0.18) 0%, transparent 55%)",
+            "#06071c",
+          ].join(", ")
+        }} />
+        <div className="absolute inset-0" style={{
+          backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
+        }} />
       </div>
 
-      <div className="relative z-10 w-full max-w-sm">
+      <div className="relative z-10 w-full max-w-sm animate-fade-up">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 mb-5 shadow-lg shadow-amber-500/5">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-5"
+            style={{ background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.25)", boxShadow: "0 0 32px rgba(245,158,11,0.12)" }}>
             <Layers className="w-7 h-7 text-amber-400" />
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Commander Vault</h1>
-          <p className="text-sm text-zinc-400 mt-1.5">Welcome back</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight gradient-text">Commander Vault</h1>
+          <p className="text-sm text-zinc-500 mt-1.5">Welcome back</p>
         </div>
 
-        <div className="rounded-2xl p-6 space-y-4" style={{ background: "rgba(9,9,11,0.70)", border: "1px solid rgba(255,255,255,0.07)", backdropFilter: "blur(24px)", boxShadow: "0 25px 50px rgba(0,0,0,0.5)" }}>
+        <div className="rounded-2xl p-6 space-y-4"
+          style={{ background: "rgba(10,10,22,0.85)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(24px)", boxShadow: "0 30px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)" }}>
           {error && (
             <div className="flex items-center gap-2.5 text-sm text-red-400 bg-red-950/40 border border-red-500/20 rounded-xl px-3.5 py-2.5">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />

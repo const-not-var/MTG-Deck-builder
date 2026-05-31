@@ -8,6 +8,11 @@ export function getCardImageUri(card: ScryfallCard): string {
   return ""
 }
 
+export function getCardImageUriBack(card: ScryfallCard): string | undefined {
+  if (card.card_faces?.[1]?.image_uris?.normal) return card.card_faces[1].image_uris.normal
+  return undefined
+}
+
 export function getCardSmallImageUri(card: ScryfallCard): string {
   if (card.image_uris?.small) return card.image_uris.small
   if (card.card_faces?.[0]?.image_uris?.small) return card.card_faces[0].image_uris.small

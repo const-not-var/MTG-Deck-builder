@@ -15,7 +15,7 @@ function getImage(card: ScryfallCard, size: "small" | "normal" = "small"): strin
   return ""
 }
 
-export function CardSearch({ onCardSelect, placeholder = "Search for a card…" }: Props) {
+export function CardSearch({ onCardSelect, placeholder = "Card name or collector number…" }: Props) {
   const [query, setQuery] = useState("")
   const [names, setNames] = useState<string[]>([])
   const [searching, setSearching] = useState(false)
@@ -27,17 +27,38 @@ export function CardSearch({ onCardSelect, placeholder = "Search for a card…" 
   const [loadingPrintings, setLoadingPrintings] = useState(false)
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const search = useCallback(async (q: string) => {
-    if (q.length < 2) { setNames([]); return }
+    // Cancel any in-flight request
+    abortRef.current?.abort()
+    abortRef.current = new AbortController()
+
+    if (q.length < 2) {
+      setNames([])
+      setPrintings([])
+      setSelectedName(null)
+      setSearching(false)
+      return
+    }
     setSearching(true)
     try {
-      const res = await fetch(`/api/cards/search?q=${encodeURIComponent(q)}`)
+      const res = await fetch(`/api/cards/search?q=${encodeURIComponent(q)}`, { signal: abortRef.current.signal })
       const data = await res.json()
-      setNames(data.names ?? [])
+      if (data.type === "collector") {
+        setNames([])
+        setSelectedName(`#${q.trim()}`)
+        setPrintings(data.cards ?? [])
+      } else {
+        setNames(data.names ?? [])
+        setSelectedName(null)
+        setPrintings([])
+      }
       setOpen(true)
+    } catch (e) {
+      if ((e as Error).name === "AbortError") return
     } finally {
       setSearching(false)
     }
@@ -45,7 +66,7 @@ export function CardSearch({ onCardSelect, placeholder = "Search for a card…" 
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => search(query), 280)
+    debounceRef.current = setTimeout(() => search(query), 120)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [query, search])
 
@@ -134,7 +155,9 @@ export function CardSearch({ onCardSelect, placeholder = "Search for a card…" 
                   <ChevronLeft className="w-3.5 h-3.5" />
                   Back
                 </button>
-                <span className="text-xs font-medium text-zinc-300 truncate">{selectedName}</span>
+                <span className="text-xs font-medium text-zinc-300 truncate">
+                  {selectedName?.startsWith("#") ? `Results for "${selectedName.slice(1)}"` : selectedName}
+                </span>
               </div>
 
               {loadingPrintings && (
