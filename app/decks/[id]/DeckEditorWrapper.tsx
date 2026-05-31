@@ -30,6 +30,7 @@ export function DeckEditorWrapper({ deckId, userName }: Props) {
       />
       <div className="relative flex flex-col h-screen overflow-hidden">
         <Navbar userName={userName} />
+        <div className="h-14 flex-shrink-0" />
         <DeckEditor deckId={deckId} />
       </div>
     </div>

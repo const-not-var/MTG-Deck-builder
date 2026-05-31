@@ -71,6 +71,7 @@ export function DecksClient({ userName }: Props) {
 
       <div className="relative z-10 flex flex-col min-h-screen">
         <Navbar userName={userName} />
+        <div className="h-14 flex-shrink-0" />
 
         {/* Page header */}
         <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-8 sm:pt-12 pb-6 sm:pb-8 animate-fade-in">

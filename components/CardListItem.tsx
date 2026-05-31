@@ -54,6 +54,11 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
   const [imgError, setImgError] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 })
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768)
+  }, [])
   const hideRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const showRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -217,29 +222,45 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
         </button>
       </div>
 
-      {/* Fixed-position HoloCard preview */}
+      {/* Card preview */}
       {showPreview && card.imageUri && (
-        <div
-          className="fixed z-[100] pointer-events-none"
-          style={{
-            left: Math.min(hoverPos.x + 16, window.innerWidth - 230),
-            top: Math.max(hoverPos.y - 100, 8),
-          }}
-        >
-          <div
-            className="bg-zinc-900 rounded-xl overflow-hidden shadow-2xl border border-zinc-700/60 w-52 pointer-events-auto"
-            onMouseEnter={cancelHide}
-            onMouseLeave={scheduleHide}
-          >
-            <HoloCard
-              src={card.imageUri}
-              alt={card.name}
-              imgStyle={{ borderRadius: "5%" }}
-              imgClassName="w-full"
-              foil={!!card.isFoil}
+        <>
+          {/* Mobile: full-screen backdrop to dismiss on tap */}
+          {isMobile && (
+            <div
+              className="fixed inset-0 z-[99]"
+              onClick={() => setShowPreview(false)}
             />
+          )}
+          <div
+            className="fixed z-[100]"
+            style={isMobile ? {
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              pointerEvents: "auto",
+            } : {
+              left: Math.min(hoverPos.x + 16, window.innerWidth - 230),
+              top: Math.max(hoverPos.y - 100, 8),
+              pointerEvents: "none",
+            }}
+            onClick={() => isMobile && setShowPreview(false)}
+          >
+            <div
+              className="bg-zinc-900 rounded-xl overflow-hidden shadow-2xl border border-zinc-700/60 w-52 pointer-events-auto"
+              onMouseEnter={isMobile ? undefined : cancelHide}
+              onMouseLeave={isMobile ? undefined : scheduleHide}
+            >
+              <HoloCard
+                src={card.imageUri}
+                alt={card.name}
+                imgStyle={{ borderRadius: "5%" }}
+                imgClassName="w-full"
+                foil={!!card.isFoil}
+              />
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   )
