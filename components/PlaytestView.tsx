@@ -329,7 +329,8 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
   const [handFlipped, setHandFlipped] = useState<Set<number>>(new Set())
   const [handDrag, setHandDrag] = useState<HandDrag | null>(null)
   const [cmdDrag, setCmdDrag] = useState<CmdDrag | null>(null)
-  const [dropTarget, setDropTarget] = useState<"battlefield" | "graveyard" | "exile" | "hand" | null>(null)
+  const [dropTarget, setDropTarget] = useState<"battlefield" | "graveyard" | "exile" | "hand" | "commandZone" | null>(null)
+  const cmdZoneRef = useRef<HTMLDivElement>(null)
 
   const bfRef = useRef<HTMLDivElement>(null)
   const bfSizeRef = useRef({ w: 0, h: 0 })
@@ -669,9 +670,13 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
         const hz = handZoneRef.current?.getBoundingClientRect()
         const gy = gyRef.current?.getBoundingClientRect()
         const ex = exileRef.current?.getBoundingClientRect()
+        const cz = cmdZoneRef.current?.getBoundingClientRect()
         const cx = e.clientX, cy = e.clientY
         const over = (r: DOMRect) => cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom
-        if (hz && over(hz)) setDropTarget("hand")
+        const draggedCard = ps.battlefield.find(b => b.id === bfDrag.current?.id)
+        const isCommander = draggedCard ? cmdCards.current.some(c => c.scryfallId === draggedCard.card.scryfallId) : false
+        if (isCommander && cz && over(cz)) setDropTarget("commandZone")
+        else if (hz && over(hz)) setDropTarget("hand")
         else if (gy && over(gy)) setDropTarget("graveyard")
         else if (ex && over(ex)) setDropTarget("exile")
         else setDropTarget(null)
@@ -698,7 +703,9 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
       const hz = handZoneRef.current?.getBoundingClientRect()
       const gy = gyRef.current?.getBoundingClientRect()
       const ex = exileRef.current?.getBoundingClientRect()
-      if (hz && over(hz)) bounce(id)
+      const cz = cmdZoneRef.current?.getBoundingClientRect()
+      if (cz && over(cz)) returnToCommandZone(id)
+      else if (hz && over(hz)) bounce(id)
       else if (gy && over(gy)) toGY(id)
       else if (ex && over(ex)) toExile(id)
     }
@@ -947,7 +954,7 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
 
         {/* Command zone */}
         {cmdCards.current.length > 0 && (
-          <div className="absolute flex flex-col gap-1.5" style={{ top: "calc(50% - min(45%, 345px) + 14px)", left: "calc(50% - min(47.5%, 615px) + 14px)", zIndex: 10 }}>
+          <div ref={cmdZoneRef} className="absolute flex flex-col gap-1.5" style={{ top: "calc(50% - min(45%, 345px) + 14px)", left: "calc(50% - min(47.5%, 615px) + 14px)", zIndex: 10, borderRadius: 10, padding: 4, transition: "background 0.15s", background: dropTarget === "commandZone" ? "rgba(245,158,11,0.15)" : "transparent" }}>
             <span className="text-[8px] font-bold uppercase tracking-widest text-amber-500/50 pl-0.5">Command Zone</span>
             <div className="flex gap-2">
               {cmdCards.current.map((cmd, i) => {
@@ -1044,9 +1051,11 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
               {/* Tapped ring */}
               {bfc.tapped && <div className="absolute inset-0 rounded-lg ring-1 ring-amber-500/20 pointer-events-none" />}
 
-              {/* Name tooltip */}
-              <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 opacity-0 group-hover/bfc:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                <span className="text-[9px] text-zinc-300 bg-black/80 px-1.5 py-0.5 rounded">{bfc.card.name}</span>
+              {/* Name label — inside card at bottom, covers legal text on hover */}
+              <div className="absolute bottom-0 left-0 right-0 opacity-0 group-hover/bfc:opacity-100 transition-opacity pointer-events-none rounded-b-lg overflow-hidden" style={{ zIndex: 3 }}>
+                <div className="bg-black/85 px-1.5 py-1 text-center">
+                  <span className="text-[9px] text-zinc-200 leading-tight block truncate">{bfc.card.name}</span>
+                </div>
               </div>
             </div>
           )
