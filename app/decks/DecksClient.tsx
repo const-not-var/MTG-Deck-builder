@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Plus, Loader2, Swords, X, Library } from "lucide-react"
 import type { Deck } from "@/types"
 import { Navbar } from "@/components/Navbar"
@@ -13,9 +13,10 @@ interface Props {
 
 export function DecksClient({ userName }: Props) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [decks, setDecks] = useState<Deck[]>([])
   const [loading, setLoading] = useState(true)
-  const [showNewModal, setShowNewModal] = useState(false)
+  const [showNewModal, setShowNewModal] = useState(searchParams.get("new") === "1")
   const [newDeckName, setNewDeckName] = useState("")
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState("")
