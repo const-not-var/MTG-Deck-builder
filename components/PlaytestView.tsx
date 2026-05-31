@@ -1154,8 +1154,9 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
           borderTop: dropTarget === "hand" ? "2px solid rgba(99,179,237,0.7)" : "1px solid rgba(255,255,255,0.05)",
           boxShadow: dropTarget === "hand" ? "0 -8px 32px rgba(99,179,237,0.18)" : "none",
           transition: "border 0.1s, box-shadow 0.1s",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}>
-        <div className="flex items-end gap-2 px-4 py-3 overflow-x-auto" style={{ minHeight: H + 40 }}>
+        <div className="flex items-center gap-2 px-4 pt-3 pb-6 overflow-x-auto" style={{ minHeight: H + 56 }}>
           {ps.hand.length === 0 ? (
             <div className="flex items-center justify-center w-full">
               <span className="text-xs text-zinc-700">Empty hand</span>
@@ -1169,7 +1170,7 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
                 className="flex-shrink-0 flex flex-col items-center gap-1 group/hand"
                 style={{ opacity: isDragging ? 0.2 : 1, transition: "opacity 0.15s" }}>
                 <div className="transition-all duration-150 group-hover/hand:-translate-y-2 group-hover/hand:shadow-2xl"
-                  style={{ width: W, height: H - 10, position: "relative", overflow: "hidden", borderRadius: 8 }}>
+                  style={{ width: W, height: H, position: "relative", borderRadius: 8 }}>
                   {activeUri ? (
                     <img src={activeUri} alt={card.name} draggable={false}
                       className="shadow-lg select-none"
