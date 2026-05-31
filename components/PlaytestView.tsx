@@ -740,7 +740,7 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col"
+      className="fixed inset-0 z-[70] flex flex-col"
       style={{ background: "#070710", cursor: (handDrag || cmdDrag) ? "grabbing" : "default" }}
       onMouseMove={onGlobalMouseMove}
       onMouseUp={onGlobalMouseUp}
