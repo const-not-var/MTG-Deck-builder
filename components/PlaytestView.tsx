@@ -1150,82 +1150,95 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
       {/* ── Hand ───────────────────────────────────────────────────────────── */}
       <div ref={handZoneRef} className="flex-shrink-0 select-none"
         style={{
-          background: "rgba(6,7,30,0.96)",
-          borderTop: dropTarget === "hand" ? "2px solid rgba(99,179,237,0.7)" : "1px solid rgba(255,255,255,0.05)",
-          boxShadow: dropTarget === "hand" ? "0 -8px 32px rgba(99,179,237,0.18)" : "none",
-          transition: "border 0.1s, box-shadow 0.1s",
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          background: "#06070e",
+          paddingTop: 8,
+          paddingBottom: "max(10px, env(safe-area-inset-bottom))",
         }}>
-        <div className="flex items-center gap-2 px-4 pt-3 pb-6 overflow-x-auto" style={{ minHeight: H + 56 }}>
-          {ps.hand.length === 0 ? (
-            <div className="flex items-center justify-center w-full">
-              <span className="text-xs text-zinc-700">Empty hand</span>
-            </div>
-          ) : ps.hand.map((card, idx) => {
-            const isDragging = handDrag?.idx === idx
-            const isFlipped = handFlipped.has(idx)
-            const activeUri = isFlipped && card.imageUriBack ? card.imageUriBack : card.imageUri
-            return (
-              <div key={`${card.scryfallId}-${idx}`}
-                className="flex-shrink-0 flex flex-col items-center gap-1 group/hand"
-                style={{ opacity: isDragging ? 0.2 : 1, transition: "opacity 0.15s" }}>
-                <div className="transition-all duration-150 group-hover/hand:-translate-y-2 group-hover/hand:shadow-2xl"
-                  style={{ width: W, height: H, position: "relative", borderRadius: 8 }}>
-                  {activeUri ? (
-                    <img src={activeUri} alt={card.name} draggable={false}
-                      className="shadow-lg select-none"
-                      style={{
-                        width: W, height: H, display: "block", borderRadius: 8,
-                        cursor: ps.mulliganPhase === "playing" ? "grab" : "default",
-                        outline: ps.mulliganPhase === "bottoming" && ps.bottomSelected.has(idx) ? "2px solid rgba(239,68,68,0.9)" : "none",
-                      }}
-                      onMouseDown={(e) => {
-                        if (e.button !== 0 || ps.mulliganPhase !== "playing") return
-                        e.preventDefault()
-                        setHandDrag({ idx, card, x: e.clientX, y: e.clientY })
-                      }}
-                      onDoubleClick={() => setZoomed(activeUri)}
-                      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setHandCtx({ idx, x: e.clientX, y: e.clientY }) }}
-                    />
-                  ) : (
-                    <div className="rounded-lg flex items-center justify-center text-[9px] text-zinc-400 text-center p-1 cursor-grab"
-                      style={{ width: W, height: H, background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)" }}
-                      onMouseDown={(e) => {
-                        if (e.button !== 0 || ps.mulliganPhase !== "playing") return
-                        e.preventDefault()
-                        setHandDrag({ idx, card, x: e.clientX, y: e.clientY })
-                      }}>
-                      {card.name}
-                    </div>
-                  )}
-
-                  {/* Flip button */}
-                  {card.imageUriBack && ps.mulliganPhase === "playing" && (
-                    <button
-                      className="absolute top-1.5 right-1.5 opacity-0 group-hover/hand:opacity-100 transition-opacity"
-                      style={{ background: "rgba(0,0,0,0.82)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "6px", padding: "4px", lineHeight: 0 }}
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onClick={(e) => { e.stopPropagation(); setHandFlipped(prev => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n }) }}>
-                      <FlipHorizontal2 className="w-3 h-3 text-sky-400" />
-                    </button>
-                  )}
-
-                  {/* Mulligan overlay */}
-                  {ps.mulliganPhase === "bottoming" && (
-                    <div className="absolute inset-0 rounded-lg cursor-pointer"
-                      style={{ background: ps.bottomSelected.has(idx) ? "rgba(239,68,68,0.42)" : "transparent", transition: "background 0.1s" }}
-                      onClick={() => toggleBottom(idx)}>
-                      {ps.bottomSelected.has(idx) && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-[10px] font-bold text-white bg-red-600/80 rounded px-1.5 py-0.5">Bottom</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+        {/* Bubble — same width as the playmat */}
+        <div className="mx-auto" style={{
+          width: "min(95%, 1230px)",
+          background: dropTarget === "hand" ? "rgba(99,179,237,0.06)" : "rgba(13,16,40,0.9)",
+          border: dropTarget === "hand" ? "1px solid rgba(99,179,237,0.55)" : "1px solid rgba(99,102,241,0.18)",
+          borderRadius: 14,
+          boxShadow: dropTarget === "hand"
+            ? "0 0 24px rgba(99,179,237,0.2), inset 0 1px 0 rgba(255,255,255,0.04)"
+            : "0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)",
+          transition: "background 0.12s, border 0.12s, box-shadow 0.12s",
+          overflowX: "auto",
+          overflowY: "visible",
+          scrollbarWidth: "none",
+        }}>
+          <div className="flex items-center gap-2 px-3 py-3" style={{ minWidth: "max-content" }}>
+            {ps.hand.length === 0 ? (
+              <div className="flex items-center justify-center w-full" style={{ minWidth: 200, minHeight: H }}>
+                <span className="text-xs text-zinc-700">Empty hand</span>
               </div>
-            )
-          })}
+            ) : ps.hand.map((card, idx) => {
+              const isDragging = handDrag?.idx === idx
+              const isFlipped = handFlipped.has(idx)
+              const activeUri = isFlipped && card.imageUriBack ? card.imageUriBack : card.imageUri
+              return (
+                <div key={`${card.scryfallId}-${idx}`}
+                  className="flex-shrink-0 group/hand"
+                  style={{ opacity: isDragging ? 0.2 : 1, transition: "opacity 0.15s" }}>
+                  <div className="transition-all duration-150 group-hover/hand:-translate-y-2 group-hover/hand:shadow-2xl"
+                    style={{ width: W, height: H, position: "relative", borderRadius: 8 }}>
+                    {activeUri ? (
+                      <img src={activeUri} alt={card.name} draggable={false}
+                        className="shadow-lg select-none"
+                        style={{
+                          width: W, height: H, display: "block", borderRadius: 8,
+                          cursor: ps.mulliganPhase === "playing" ? "grab" : "default",
+                          outline: ps.mulliganPhase === "bottoming" && ps.bottomSelected.has(idx) ? "2px solid rgba(239,68,68,0.9)" : "none",
+                        }}
+                        onMouseDown={(e) => {
+                          if (e.button !== 0 || ps.mulliganPhase !== "playing") return
+                          e.preventDefault()
+                          setHandDrag({ idx, card, x: e.clientX, y: e.clientY })
+                        }}
+                        onDoubleClick={() => setZoomed(activeUri)}
+                        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setHandCtx({ idx, x: e.clientX, y: e.clientY }) }}
+                      />
+                    ) : (
+                      <div className="rounded-lg flex items-center justify-center text-[9px] text-zinc-400 text-center p-1 cursor-grab"
+                        style={{ width: W, height: H, background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)" }}
+                        onMouseDown={(e) => {
+                          if (e.button !== 0 || ps.mulliganPhase !== "playing") return
+                          e.preventDefault()
+                          setHandDrag({ idx, card, x: e.clientX, y: e.clientY })
+                        }}>
+                        {card.name}
+                      </div>
+                    )}
+
+                    {/* Flip button */}
+                    {card.imageUriBack && ps.mulliganPhase === "playing" && (
+                      <button
+                        className="absolute top-1.5 right-1.5 opacity-0 group-hover/hand:opacity-100 transition-opacity"
+                        style={{ background: "rgba(0,0,0,0.82)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "6px", padding: "4px", lineHeight: 0 }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => { e.stopPropagation(); setHandFlipped(prev => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n }) }}>
+                        <FlipHorizontal2 className="w-3 h-3 text-sky-400" />
+                      </button>
+                    )}
+
+                    {/* Mulligan overlay */}
+                    {ps.mulliganPhase === "bottoming" && (
+                      <div className="absolute inset-0 rounded-lg cursor-pointer"
+                        style={{ background: ps.bottomSelected.has(idx) ? "rgba(239,68,68,0.42)" : "transparent", transition: "background 0.1s" }}
+                        onClick={() => toggleBottom(idx)}>
+                        {ps.bottomSelected.has(idx) && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-[10px] font-bold text-white bg-red-600/80 rounded px-1.5 py-0.5">Bottom</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
 
