@@ -1153,9 +1153,9 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
           background: "#06070e",
           paddingTop: 12,
           paddingBottom: "max(12px, env(safe-area-inset-bottom))",
-          marginTop: -80,
+          marginTop: -100,
           position: "relative",
-          zIndex: 1,
+          zIndex: 30,
         }}>
         {/* Bubble — same width as the playmat */}
         <div className="mx-auto" style={{
