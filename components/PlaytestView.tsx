@@ -1153,7 +1153,7 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
           background: "#06070e",
           paddingTop: 12,
           paddingBottom: "max(12px, env(safe-area-inset-bottom))",
-          marginTop: -36,
+          marginTop: -60,
           position: "relative",
           zIndex: 1,
         }}>
