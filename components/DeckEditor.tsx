@@ -11,6 +11,7 @@ import { isCompanionCard } from "@/lib/companion"
 import { getDeckLimit } from "@/lib/rules"
 import { CardSearch } from "./CardSearch"
 import { CardStack, CARD_W } from "./CardStack"
+import { CardListItem } from "./CardListItem"
 import { DeckStats } from "./DeckStats"
 import { PlaytestView } from "./PlaytestView"
 
@@ -711,88 +712,124 @@ export function DeckEditor({ deckId }: Props) {
             </>
           )}
 
-        <div
-          ref={scrollRef}
-          className="flex-1 overflow-auto select-none"
-          style={{ cursor: drag.current.active ? "grabbing" : "grab" }}
-          onMouseDown={(e) => {
-            if ((e.target as HTMLElement).closest("button")) return
-            drag.current = { active: true, startX: e.pageX, scrollLeft: scrollRef.current?.scrollLeft ?? 0 }
-          }}
-          onMouseMove={(e) => {
-            if (!drag.current.active || !scrollRef.current) return
-            e.preventDefault()
-            scrollRef.current.scrollLeft = drag.current.scrollLeft - (e.pageX - drag.current.startX)
-          }}
-          onMouseUp={() => { drag.current.active = false }}
-          onMouseLeave={() => { drag.current.active = false }}
-        >
-          <div className="flex gap-5 p-5 pb-10 pt-12 items-start" style={{ minWidth: "max-content" }}>
-            {SECTIONS.map(({ key, label, color, filter }) => {
-              const sectionCards = deck.cards.filter(filter)
-              if (sectionCards.length === 0) return null
-              const sectionTotal = sectionCards.reduce((s, c) => s + c.quantity, 0)
-              const sectionPrice = sectionCards.reduce((s, c) => {
-                const p = parseFloat((c.isFoil ? c.prices?.usdFoil : c.prices?.usd) ?? c.prices?.usdFoil ?? c.prices?.usd ?? "0")
-                return s + (isNaN(p) ? 0 : p * c.quantity)
-              }, 0)
-
-              return (
-                <div key={key} className="flex-shrink-0" style={{ width: CARD_W }}>
-                  {/* Column header */}
-                  <div className="mb-2.5">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                      <span className="text-[10px] font-bold uppercase tracking-widest truncate" style={{ color }}>
-                        {label}
-                      </span>
-                      <span
-                        className="text-[9px] font-semibold tabular-nums px-1 py-0.5 rounded flex-shrink-0"
-                        style={{ background: `${color}18`, border: `1px solid ${color}28`, color }}
-                      >
-                        {sectionTotal}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="h-px flex-1" style={{ background: `linear-gradient(to right, ${color}40, transparent)` }} />
-                      <span className="text-[9px] text-zinc-600 tabular-nums ml-1.5">${sectionPrice.toFixed(2)}</span>
-                    </div>
-                  </div>
-
-                  {/* Solitaire card stack */}
-                  <CardStack
-                    cards={sectionCards}
-                    onRemove={handleRemove}
-                    onQuantityChange={handleQuantityChange}
-                    onToggleCommander={handleToggleCommander}
-                    onToggleCompanion={handleToggleCompanion}
-                    commanderColorIdentity={commanderColorIdentity}
-                    hasCommander={!!commander}
-                  />
+        {/* Mobile: vertical scrollable card list */}
+        {isMobile ? (
+          <div className="flex-1 overflow-y-auto">
+            {deck.cards.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 text-center px-6">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
+                  style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)" }}>
+                  <Swords className="w-6 h-6 text-amber-500/60" />
                 </div>
-              )
-            })}
-
-            {deck.cards.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-32 text-center">
-                <div
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
-                  style={{
-                    background: "rgba(245,158,11,0.08)",
-                    border: "1px solid rgba(245,158,11,0.15)",
-                    boxShadow: "0 0 40px rgba(245,158,11,0.05)",
-                  }}
-                >
-                  <Swords className="w-7 h-7 text-amber-500/60" />
-                </div>
-                <p className="text-zinc-300 text-sm font-semibold mb-1.5">Your deck is empty</p>
-                <p className="text-zinc-600 text-xs leading-relaxed">
-                  Search for cards on the left to start<br />building your Commander deck.
-                </p>
+                <p className="text-zinc-300 text-sm font-semibold mb-1">Your deck is empty</p>
+                <p className="text-zinc-500 text-xs leading-relaxed">Tap the Search tab to add cards.</p>
               </div>
+            ) : (
+              SECTIONS.map(({ key, label, color, filter }) => {
+                const sectionCards = deck.cards.filter(filter)
+                if (sectionCards.length === 0) return null
+                const sectionTotal = sectionCards.reduce((s, c) => s + c.quantity, 0)
+                const sectionPrice = sectionCards.reduce((s, c) => {
+                  const p = parseFloat((c.isFoil ? c.prices?.usdFoil : c.prices?.usd) ?? c.prices?.usdFoil ?? c.prices?.usd ?? "0")
+                  return s + (isNaN(p) ? 0 : p * c.quantity)
+                }, 0)
+                return (
+                  <div key={key}>
+                    <div className="flex items-center gap-2 px-4 py-2 sticky top-0 z-10"
+                      style={{ background: "rgba(6,7,30,0.95)", backdropFilter: "blur(8px)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                      <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                      <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color }}>{label}</span>
+                      <span className="text-[9px] font-semibold tabular-nums px-1 py-0.5 rounded"
+                        style={{ background: `${color}18`, border: `1px solid ${color}28`, color }}>{sectionTotal}</span>
+                      <span className="text-[9px] text-zinc-600 tabular-nums ml-auto">${sectionPrice.toFixed(2)}</span>
+                    </div>
+                    {sectionCards.map((card) => (
+                      <CardListItem
+                        key={card.scryfallId}
+                        card={card}
+                        onRemove={handleRemove}
+                        onQuantityChange={handleQuantityChange}
+                        onToggleCommander={handleToggleCommander}
+                        commanderColorIdentity={commanderColorIdentity}
+                        hasCommander={!!commander}
+                        alwaysShowActions
+                      />
+                    ))}
+                  </div>
+                )
+              })
             )}
           </div>
-        </div>
+        ) : (
+          /* Desktop: horizontal solitaire card stacks */
+          <div
+            ref={scrollRef}
+            className="flex-1 overflow-auto select-none"
+            style={{ cursor: drag.current.active ? "grabbing" : "grab" }}
+            onMouseDown={(e) => {
+              if ((e.target as HTMLElement).closest("button")) return
+              drag.current = { active: true, startX: e.pageX, scrollLeft: scrollRef.current?.scrollLeft ?? 0 }
+            }}
+            onMouseMove={(e) => {
+              if (!drag.current.active || !scrollRef.current) return
+              e.preventDefault()
+              scrollRef.current.scrollLeft = drag.current.scrollLeft - (e.pageX - drag.current.startX)
+            }}
+            onMouseUp={() => { drag.current.active = false }}
+            onMouseLeave={() => { drag.current.active = false }}
+          >
+            <div className="flex gap-5 p-5 pb-10 pt-12 items-start" style={{ minWidth: "max-content" }}>
+              {SECTIONS.map(({ key, label, color, filter }) => {
+                const sectionCards = deck.cards.filter(filter)
+                if (sectionCards.length === 0) return null
+                const sectionTotal = sectionCards.reduce((s, c) => s + c.quantity, 0)
+                const sectionPrice = sectionCards.reduce((s, c) => {
+                  const p = parseFloat((c.isFoil ? c.prices?.usdFoil : c.prices?.usd) ?? c.prices?.usdFoil ?? c.prices?.usd ?? "0")
+                  return s + (isNaN(p) ? 0 : p * c.quantity)
+                }, 0)
+
+                return (
+                  <div key={key} className="flex-shrink-0" style={{ width: CARD_W }}>
+                    <div className="mb-2.5">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                        <span className="text-[10px] font-bold uppercase tracking-widest truncate" style={{ color }}>{label}</span>
+                        <span className="text-[9px] font-semibold tabular-nums px-1 py-0.5 rounded flex-shrink-0"
+                          style={{ background: `${color}18`, border: `1px solid ${color}28`, color }}>{sectionTotal}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="h-px flex-1" style={{ background: `linear-gradient(to right, ${color}40, transparent)` }} />
+                        <span className="text-[9px] text-zinc-600 tabular-nums ml-1.5">${sectionPrice.toFixed(2)}</span>
+                      </div>
+                    </div>
+                    <CardStack
+                      cards={sectionCards}
+                      onRemove={handleRemove}
+                      onQuantityChange={handleQuantityChange}
+                      onToggleCommander={handleToggleCommander}
+                      onToggleCompanion={handleToggleCompanion}
+                      commanderColorIdentity={commanderColorIdentity}
+                      hasCommander={!!commander}
+                    />
+                  </div>
+                )
+              })}
+
+              {deck.cards.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-32 text-center">
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
+                    style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)", boxShadow: "0 0 40px rgba(245,158,11,0.05)" }}>
+                    <Swords className="w-7 h-7 text-amber-500/60" />
+                  </div>
+                  <p className="text-zinc-300 text-sm font-semibold mb-1.5">Your deck is empty</p>
+                  <p className="text-zinc-600 text-xs leading-relaxed">
+                    Search for cards on the left to start<br />building your Commander deck.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         </div>{/* end center wrapper */}
 
         {/* Right: stats */}

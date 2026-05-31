@@ -14,6 +14,7 @@ interface Props {
   onToggleCommander: (scryfallId: string) => void
   commanderColorIdentity: string[]
   hasCommander: boolean
+  alwaysShowActions?: boolean
 }
 
 function saltColor(s: number): string {
@@ -49,7 +50,7 @@ function SaltPill({ salt }: { salt: number }) {
   )
 }
 
-export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommander, commanderColorIdentity, hasCommander }: Props) {
+export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommander, commanderColorIdentity, hasCommander, alwaysShowActions }: Props) {
   const [imgError, setImgError] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 })
@@ -177,7 +178,7 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+      <div className={`flex items-center gap-0.5 transition-opacity flex-shrink-0 ${alwaysShowActions ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
         {/* Quantity controls for basic lands and "any number" cards */}
         {isMultiCopy && (
           <>
