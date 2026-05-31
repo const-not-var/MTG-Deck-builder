@@ -128,7 +128,10 @@ export function DecksClient({ userName }: Props) {
           )}
         </main>
 
-
+        {/* Disclaimer — mobile only (desktop uses fixed footer in root layout) */}
+        <p className="md:hidden text-center text-[10px] text-zinc-700 leading-relaxed px-4 py-4">
+          commandervault.net is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.
+        </p>
       </div>
 
       {/* New deck modal */}

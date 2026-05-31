@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Crown, Swords } from "lucide-react"
 import type { Deck } from "@/types"
 
@@ -26,6 +26,7 @@ const COLOR_SHADOW: Record<string, string> = {
 }
 
 export function DeckCard({ deck }: DeckCardProps) {
+  const router = useRouter()
   const commander = deck.cards.find((c) => c.isCommander)
 
   const { totalPrice, totalCards } = useMemo(() => {
@@ -44,7 +45,7 @@ export function DeckCard({ deck }: DeckCardProps) {
   const colors = commander?.colorIdentity ?? []
 
   return (
-    <Link href={`/decks/${deck._id}`} className="group relative block z-0 hover:z-10 outline-none">
+    <div onClick={() => router.push(`/decks/${deck._id}`)} className="group relative block z-0 hover:z-10 outline-none cursor-pointer">
       <div
         className="relative rounded-2xl overflow-hidden transition-all duration-500 shadow-lg group-hover:shadow-2xl group-hover:-translate-y-2"
         style={{
@@ -123,6 +124,6 @@ export function DeckCard({ deck }: DeckCardProps) {
           </div>
         </div>
       </div>
-    </Link>
+    </div>
   )
 }

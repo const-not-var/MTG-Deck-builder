@@ -854,24 +854,29 @@ export function DeckEditor({ deckId }: Props) {
       {/* Mobile bottom tab bar */}
       {isMobile && (
         <div
-          className="flex flex-shrink-0 border-t"
-          style={{ background: "rgba(6,7,30,0.97)", borderColor: "rgba(255,255,255,0.06)" }}
+          className="flex-shrink-0 border-t"
+          style={{ background: "rgba(6,7,30,0.97)", borderColor: "rgba(255,255,255,0.06)", position: "relative", zIndex: 50 }}
         >
-          {([
-            { key: "search", label: "Search", Icon: Search },
-            { key: "cards",  label: "Cards",  Icon: Layers },
-            { key: "stats",  label: "Stats",  Icon: BarChart2 },
-          ] as const).map(({ key, label, Icon }) => (
-            <button
-              key={key}
-              onClick={() => setMobileTab(key)}
-              className="flex-1 flex flex-col items-center gap-1 py-2.5 transition-colors"
-              style={{ color: mobileTab === key ? "#f59e0b" : "#52525b" }}
-            >
-              <Icon className="w-4 h-4" />
-              <span className="text-[10px] font-semibold uppercase tracking-wider">{label}</span>
-            </button>
-          ))}
+          <div className="flex">
+            {([
+              { key: "search", label: "Search", Icon: Search },
+              { key: "cards",  label: "Cards",  Icon: Layers },
+              { key: "stats",  label: "Stats",  Icon: BarChart2 },
+            ] as const).map(({ key, label, Icon }) => (
+              <button
+                key={key}
+                onClick={() => setMobileTab(key)}
+                className="flex-1 flex flex-col items-center gap-1 py-2.5 transition-colors"
+                style={{ color: mobileTab === key ? "#f59e0b" : "#52525b" }}
+              >
+                <Icon className="w-4 h-4" />
+                <span className="text-[10px] font-semibold uppercase tracking-wider">{label}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-center text-[9px] text-zinc-800 leading-none pb-1.5 px-2">
+            commandervault.net is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.
+          </p>
         </div>
       )}
 
