@@ -135,6 +135,12 @@ export function DecksClient({ userName }: Props) {
             </div>
           )}
         </main>
+
+        <footer className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 mt-auto">
+          <p className="text-center text-[11px] text-zinc-600 leading-relaxed">
+            commandervault.net is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.
+          </p>
+        </footer>
       </div>
 
       {/* New deck modal */}
