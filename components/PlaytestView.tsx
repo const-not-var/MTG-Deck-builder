@@ -1168,14 +1168,16 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
               <div key={`${card.scryfallId}-${idx}`}
                 className="flex-shrink-0 flex flex-col items-center gap-1 group/hand"
                 style={{ opacity: isDragging ? 0.2 : 1, transition: "opacity 0.15s" }}>
-                <div style={{ width: W, height: H, position: "relative" }}>
+                {/* Clip bottom ~8% of card to hide the legal text strip */}
+                <div style={{ width: W, height: H, position: "relative", overflow: "hidden", borderRadius: 8 }}>
                   {activeUri ? (
                     <img src={activeUri} alt={card.name} draggable={false}
-                      className="rounded-lg shadow-lg select-none transition-all duration-150 group-hover/hand:-translate-y-2 group-hover/hand:shadow-2xl"
+                      className="shadow-lg select-none transition-all duration-150 group-hover/hand:-translate-y-2 group-hover/hand:shadow-2xl"
                       style={{
-                        width: W, height: H, objectFit: "cover", objectPosition: "top",
+                        width: W, height: Math.round(H * 1.09), objectFit: "cover", objectPosition: "top",
                         cursor: ps.mulliganPhase === "playing" ? "grab" : "default",
                         outline: ps.mulliganPhase === "bottoming" && ps.bottomSelected.has(idx) ? "2px solid rgba(239,68,68,0.9)" : "none",
+                        display: "block",
                       }}
                       onMouseDown={(e) => {
                         if (e.button !== 0 || ps.mulliganPhase !== "playing") return
@@ -1194,15 +1196,6 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
                         setHandDrag({ idx, card, x: e.clientX, y: e.clientY })
                       }}>
                       {card.name}
-                    </div>
-                  )}
-
-                  {/* Name label — inside card at bottom, always visible, covers legal text */}
-                  {activeUri && (
-                    <div className="absolute bottom-0 left-0 right-0 rounded-b-lg overflow-hidden pointer-events-none" style={{ zIndex: 3 }}>
-                      <div className="bg-black/80 px-1.5 py-1 text-center">
-                        <span className="text-[9px] text-zinc-200 leading-tight block truncate">{card.name}</span>
-                      </div>
                     </div>
                   )}
 
