@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Plus, Loader2, Swords, X, Library } from "lucide-react"
+import { toast } from "sonner"
 import type { Deck } from "@/types"
 import { Navbar } from "@/components/Navbar"
 import { DeckCard } from "@/components/DeckCard"
@@ -23,8 +24,9 @@ export function DecksClient({ userName }: Props) {
 
   useEffect(() => {
     fetch("/api/decks")
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error("Failed to load decks"); return r.json() })
       .then((data) => setDecks(data.decks ?? []))
+      .catch(() => toast.error("Couldn't load your decks. Please refresh."))
       .finally(() => setLoading(false))
   }, [])
 

@@ -61,6 +61,7 @@ export function DeckCard({ deck }: DeckCardProps) {
             src={artUri}
             alt=""
             aria-hidden
+            loading="lazy"
             className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-108"
             style={{ transform: "scale(1.02)" }}
           />

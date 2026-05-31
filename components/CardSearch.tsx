@@ -28,6 +28,7 @@ export function CardSearch({ onCardSelect, placeholder = "Card name or collector
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const printingsAbortRef = useRef<AbortController | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -87,13 +88,17 @@ export function CardSearch({ onCardSelect, placeholder = "Card name or collector
   }
 
   const handleSelectName = async (name: string) => {
+    printingsAbortRef.current?.abort()
+    printingsAbortRef.current = new AbortController()
     setSelectedName(name)
     setLoadingPrintings(true)
     setPrintings([])
     try {
-      const res = await fetch(`/api/cards/printings?name=${encodeURIComponent(name)}`)
+      const res = await fetch(`/api/cards/printings?name=${encodeURIComponent(name)}`, { signal: printingsAbortRef.current.signal })
       const data = await res.json()
       setPrintings(data.printings ?? [])
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") setPrintings([])
     } finally {
       setLoadingPrintings(false)
     }
@@ -184,7 +189,7 @@ export function CardSearch({ onCardSelect, placeholder = "Card name or collector
 
                   const thumbnail = (
                     <div className="flex-shrink-0 w-8 h-11 rounded-sm overflow-hidden bg-zinc-800 border border-zinc-700">
-                      {img && <img src={img} alt="" className="w-full h-full object-cover object-top" />}
+                      {img && <img src={img} alt="" loading="lazy" className="w-full h-full object-cover object-top" />}
                     </div>
                   )
 

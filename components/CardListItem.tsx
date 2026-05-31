@@ -128,6 +128,7 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
           <img
             src={card.imageUri}
             alt={card.name}
+            loading="lazy"
             onError={() => setImgError(true)}
             className="w-10 h-[58px] object-cover object-top rounded-md shadow-sm"
             style={{

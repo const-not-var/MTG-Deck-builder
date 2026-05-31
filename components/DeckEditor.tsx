@@ -9,6 +9,7 @@ import { validateDeck } from "@/lib/validation"
 import { isCommanderEligible, canCoCommand, getCombinedColorIdentity, getPartnerMode, partnerModeLabel } from "@/lib/commander"
 import { isCompanionCard } from "@/lib/companion"
 import { getDeckLimit } from "@/lib/rules"
+import { toast } from "sonner"
 import { CardSearch } from "./CardSearch"
 import { CardStack, CARD_W } from "./CardStack"
 import { CardListItem } from "./CardListItem"
@@ -44,12 +45,6 @@ const SECTIONS = [
   },
 ]
 
-interface Toast {
-  id: number
-  type: "error" | "success" | "warning"
-  message: string
-}
-
 interface Props {
   deckId: string
 }
@@ -64,8 +59,6 @@ export function DeckEditor({ deckId }: Props) {
   const [refreshing, setRefreshing] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState("")
-  const [toasts, setToasts] = useState<Toast[]>([])
-  const toastId = useRef(0)
   const scrollRef = useRef<HTMLDivElement>(null)
   const drag = useRef({ active: false, startX: 0, scrollLeft: 0 })
   const [leftOpen, setLeftOpen] = useState(true)
@@ -79,12 +72,6 @@ export function DeckEditor({ deckId }: Props) {
     check()
     window.addEventListener("resize", check)
     return () => window.removeEventListener("resize", check)
-  }, [])
-
-  const addToast = useCallback((type: Toast["type"], message: string) => {
-    const id = ++toastId.current
-    setToasts((t) => [...t, { id, type, message }])
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3500)
   }, [])
 
   const fetchSalt = useCallback((names: string[]) => {
@@ -175,11 +162,11 @@ export function DeckEditor({ deckId }: Props) {
     // Legality — block banned and not-legal cards
     const legality = card.legalities?.commander
     if (legality === "banned") {
-      addToast("error", `${card.name} is banned in Commander.`)
+      toast.error(`${card.name} is banned in Commander.`)
       return
     }
     if (legality === "not_legal") {
-      addToast("error", `${card.name} is not legal in Commander.`)
+      toast.error(`${card.name} is not legal in Commander.`)
       return
     }
 
@@ -196,7 +183,7 @@ export function DeckEditor({ deckId }: Props) {
       const msg = limit === 1
         ? `${card.name} is already in your deck.`
         : `A deck can have at most ${limit} copies of ${card.name} (you have ${currentTotal}).`
-      addToast("warning", msg)
+      toast.warning(msg)
       return
     }
 
@@ -206,7 +193,7 @@ export function DeckEditor({ deckId }: Props) {
       const cmdColors = new Set(getCombinedColorIdentity(commanders))
       const outside = card.color_identity.filter((c) => !cmdColors.has(c))
       if (outside.length > 0) {
-        addToast("error", `${card.name} is outside your commander's color identity.`)
+        toast.error(`${card.name} is outside your commander's color identity.`)
         return
       }
     }
@@ -225,7 +212,7 @@ export function DeckEditor({ deckId }: Props) {
           ),
         } : d)
         setSaved(false)
-        addToast("success", `${card.name}${isFoil ? " ✦" : ""} ×${sameEntry.quantity + 1}.`)
+        toast.success(`${card.name}${isFoil ? " ✦" : ""} ×${sameEntry.quantity + 1}.`)
         return
       }
     }
@@ -254,12 +241,12 @@ export function DeckEditor({ deckId }: Props) {
 
     setDeck((d) => d ? { ...d, cards: [...d.cards, newCard] } : d)
     setSaved(false)
-    addToast("success", `${card.name}${isFoil ? " ✦" : ""} added.`)
+    toast.success(`${card.name}${isFoil ? " ✦" : ""} added.`)
 
     // Fetch salt for this card if not already in the deck
     const alreadyInDeck = deck.cards.some((c) => c.name === card.name && c.salt !== undefined)
     if (!alreadyInDeck) fetchSalt([card.name])
-  }, [deck, addToast, fetchSalt])
+  }, [deck, fetchSalt])
 
   const handleRemove = useCallback((scryfallId: string) => {
     setDeck((d) => d ? { ...d, cards: d.cards.filter((c) => c.scryfallId !== scryfallId) } : d)
@@ -306,10 +293,7 @@ export function DeckEditor({ deckId }: Props) {
 
       // Check basic eligibility
       if (!isCommanderEligible(target)) {
-        addToast(
-          "error",
-          `${target.name} must be a Legendary Creature, Planeswalker, or Background enchantment to be a commander.`
-        )
+        toast.error(`${target.name} must be a Legendary Creature, Planeswalker, or Background enchantment to be a commander.`)
         return d
       }
 
@@ -327,7 +311,7 @@ export function DeckEditor({ deckId }: Props) {
 
       // Two commanders already — can't add a third
       if (currentCommanders.length >= 2) {
-        addToast("error", "You already have two commanders. Remove one first.")
+        toast.error("You already have two commanders. Remove one first.")
         return d
       }
 
@@ -337,7 +321,7 @@ export function DeckEditor({ deckId }: Props) {
         // Add as partner
         const mode = getPartnerMode(target)
         const label = mode ? partnerModeLabel(mode) : ""
-        addToast("success", `${target.name} added as partner commander${label ? ` (${label})` : ""}.`)
+        toast.success(`${target.name} added as partner commander${label ? ` (${label})` : ""}.`)
         return {
           ...d,
           cards: d.cards.map((c) =>
@@ -356,7 +340,7 @@ export function DeckEditor({ deckId }: Props) {
       }
     })
     setSaved(false)
-  }, [addToast])
+  }, [])
 
   const handleToggleCompanion = useCallback((scryfallId: string) => {
     setDeck((d) => {
@@ -370,13 +354,13 @@ export function DeckEditor({ deckId }: Props) {
       }
 
       if (!isCompanionCard(target)) {
-        addToast("error", `${target.name} does not have the Companion ability.`)
+        toast.error(`${target.name} does not have the Companion ability.`)
         return d
       }
 
       const currentCompanions = d.cards.filter((c) => c.isCompanion)
       if (currentCompanions.length >= 1) {
-        addToast("error", "A deck can only have one companion. Remove the existing one first.")
+        toast.error("A deck can only have one companion. Remove the existing one first.")
         return d
       }
 
@@ -389,7 +373,7 @@ export function DeckEditor({ deckId }: Props) {
       }
     })
     setSaved(false)
-  }, [addToast])
+  }, [])
 
   const handleSave = async () => {
     if (!deck) return
@@ -402,9 +386,9 @@ export function DeckEditor({ deckId }: Props) {
       })
       if (!res.ok) throw new Error("Save failed")
       setSaved(true)
-      addToast("success", "Deck saved!")
+      toast.success("Deck saved!")
     } catch {
-      addToast("error", "Failed to save. Try again.")
+      toast.error("Failed to save. Try again.")
     } finally {
       setSaving(false)
     }
@@ -417,7 +401,7 @@ export function DeckEditor({ deckId }: Props) {
       await fetch(`/api/decks/${deckId}`, { method: "DELETE" })
       router.push("/decks")
     } catch {
-      addToast("error", "Failed to delete. Try again.")
+      toast.error("Failed to delete. Try again.")
       setDeleting(false)
     }
   }
@@ -465,12 +449,12 @@ export function DeckEditor({ deckId }: Props) {
         }
       })
       setSaved(false)
-      addToast("success", "Card data refreshed from Scryfall.")
+      toast.success("Card data refreshed from Scryfall.")
 
       // Also refresh salt scores for all cards
       fetchSalt(deck.cards.map((c) => c.name))
     } catch {
-      addToast("error", "Failed to refresh card data.")
+      toast.error("Failed to refresh card data.")
     } finally {
       setRefreshing(false)
     }
@@ -890,21 +874,6 @@ export function DeckEditor({ deckId }: Props) {
       {/* Playtester overlay — desktop only */}
       {playtesting && !isMobile && <PlaytestView cards={deck.cards} onClose={() => setPlaytesting(false)} />}
 
-      {/* Toast notifications */}
-      <div className="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-2xl text-sm font-medium border backdrop-blur-sm ${
-              t.type === "error"   ? "bg-red-950/90 border-red-500/20 text-red-300" :
-              t.type === "warning" ? "bg-yellow-950/90 border-yellow-500/20 text-yellow-300" :
-                                     "bg-zinc-900/90 border-zinc-700/60 text-zinc-200"
-            }`}
-          >
-            {t.message}
-          </div>
-        ))}
-      </div>
     </div>
   )
 }
