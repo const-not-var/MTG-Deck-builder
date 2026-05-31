@@ -9,14 +9,14 @@ const H = Math.round(W * 88 / 63)
 
 // ── Phase step tracker ────────────────────────────────────────────────────────
 type GamePhase = "untap" | "upkeep" | "draw" | "main1" | "combat" | "main2" | "end"
-const PHASES: { id: GamePhase; label: string; color: string }[] = [
-  { id: "untap",  label: "Untap",  color: "#6366f1" },
-  { id: "upkeep", label: "Upkeep", color: "#8b5cf6" },
-  { id: "draw",   label: "Draw",   color: "#3b82f6" },
-  { id: "main1",  label: "Main 1", color: "#22c55e" },
-  { id: "combat", label: "Combat", color: "#ef4444" },
-  { id: "main2",  label: "Main 2", color: "#16a34a" },
-  { id: "end",    label: "End",    color: "#f59e0b" },
+const PHASES: { id: GamePhase; label: string; short: string; color: string }[] = [
+  { id: "untap",  label: "Untap",  short: "UT", color: "#6366f1" },
+  { id: "upkeep", label: "Upkeep", short: "UP", color: "#8b5cf6" },
+  { id: "draw",   label: "Draw",   short: "DR", color: "#3b82f6" },
+  { id: "main1",  label: "Main 1", short: "M1", color: "#22c55e" },
+  { id: "combat", label: "Combat", short: "CM", color: "#ef4444" },
+  { id: "main2",  label: "Main 2", short: "M2", color: "#16a34a" },
+  { id: "end",    label: "End",    short: "EN", color: "#f59e0b" },
 ]
 function nextPhase(p: GamePhase): GamePhase {
   const i = PHASES.findIndex(x => x.id === p)
@@ -747,111 +747,116 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
       onClick={closeAll}
     >
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 px-3 py-1.5 flex-shrink-0 select-none"
+      <div className="flex items-center flex-shrink-0 select-none"
         style={{ background: "rgba(6,7,30,0.98)", borderBottom: "1px solid rgba(255,255,255,0.06)", minHeight: 44 }}>
 
-        <button onClick={reset}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.07] transition-colors flex-shrink-0">
-          <Shuffle className="w-3.5 h-3.5" /> New Game
-        </button>
+        {/* Scrollable actions — all buttons at natural size, scroll when window too narrow */}
+        <div className="flex items-center gap-2 px-3 py-1.5 overflow-x-auto flex-1 min-w-0"
+          style={{ scrollbarWidth: "none" }}>
 
-        <div className="w-px h-4 flex-shrink-0" style={{ background: "rgba(255,255,255,0.07)" }} />
-
-        {ps.mulliganPhase === "playing" ? (
-          <button onClick={mulligan}
+          <button onClick={reset}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.07] transition-colors flex-shrink-0">
-            <RotateCcw className="w-3 h-3" />
-            Mulligan{ps.mulligans > 0 ? ` (${ps.mulligans})` : ""}
+            <Shuffle className="w-3.5 h-3.5" /> New Game
           </button>
-        ) : (
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-xs font-semibold text-amber-400">
-              Select {ps.bottomCount - ps.bottomSelected.size} to bottom
-            </span>
-            <button onClick={confirmBottom} disabled={ps.bottomSelected.size !== ps.bottomCount}
-              className="px-3 py-1 rounded-lg text-xs font-bold bg-amber-500 text-zinc-950 hover:bg-amber-400 disabled:opacity-40 transition-colors">
-              Confirm
+
+          <div className="w-px h-4 flex-shrink-0" style={{ background: "rgba(255,255,255,0.07)" }} />
+
+          {ps.mulliganPhase === "playing" ? (
+            <button onClick={mulligan}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.07] transition-colors flex-shrink-0">
+              <RotateCcw className="w-3 h-3" />
+              Mulligan{ps.mulligans > 0 ? ` (${ps.mulligans})` : ""}
             </button>
-          </div>
-        )}
-
-        <button onClick={drawCard}
-          className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.07] transition-colors flex-shrink-0">
-          Draw
-        </button>
-
-        <button onClick={untapAll}
-          className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.07] transition-colors flex-shrink-0">
-          Untap All
-        </button>
-
-        <button onClick={(e) => { e.stopPropagation(); setShowTokenCreator(true) }}
-          className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.07] transition-colors flex-shrink-0">
-          + Token
-        </button>
-
-        <button onClick={(e) => { e.stopPropagation(); setScryN(1) }}
-          className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.07] transition-colors flex-shrink-0">
-          Scry
-        </button>
-
-        <button onClick={(e) => { e.stopPropagation(); setMillN(1) }}
-          className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.07] transition-colors flex-shrink-0">
-          Mill
-        </button>
-
-        <button onClick={(e) => { e.stopPropagation(); shuffleLibrary() }}
-          className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.07] transition-colors flex-shrink-0">
-          Shuffle
-        </button>
-
-        <button onClick={(e) => { e.stopPropagation(); proliferate() }}
-          className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.07] transition-colors flex-shrink-0">
-          Proliferate
-        </button>
-
-        <div className="w-px h-4 flex-shrink-0" style={{ background: "rgba(255,255,255,0.07)" }} />
-
-        {/* Phase tracker */}
-        <div className="flex items-center gap-0.5 flex-shrink-0">
-          {PHASES.map(phase => {
-            const active = ps.gamePhase === phase.id
-            return (
-              <button key={phase.id}
-                onClick={(e) => { e.stopPropagation(); upd(s => ({ ...s, gamePhase: phase.id })) }}
-                className="px-2 py-0.5 rounded text-[10px] font-bold transition-all"
-                style={{
-                  background: active ? `${phase.color}22` : "transparent",
-                  color: active ? phase.color : "rgba(255,255,255,0.25)",
-                  border: `1px solid ${active ? phase.color : "transparent"}`,
-                }}>
-                {phase.label}
+          ) : (
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className="text-xs font-semibold text-amber-400">
+                Select {ps.bottomCount - ps.bottomSelected.size} to bottom
+              </span>
+              <button onClick={confirmBottom} disabled={ps.bottomSelected.size !== ps.bottomCount}
+                className="px-3 py-1 rounded-lg text-xs font-bold bg-amber-500 text-zinc-950 hover:bg-amber-400 disabled:opacity-40 transition-colors">
+                Confirm
               </button>
-            )
-          })}
-          <button onClick={(e) => { e.stopPropagation(); advancePhase() }}
-            className="ml-1 w-6 h-6 flex items-center justify-center rounded text-zinc-500 hover:text-white hover:bg-white/[0.08] text-sm font-bold transition-colors"
-            title="Next phase (N)">→</button>
+            </div>
+          )}
+
+          <button onClick={drawCard}
+            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.07] transition-colors flex-shrink-0">
+            Draw
+          </button>
+
+          <button onClick={untapAll}
+            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.07] transition-colors flex-shrink-0">
+            Untap All
+          </button>
+
+          <button onClick={(e) => { e.stopPropagation(); setShowTokenCreator(true) }}
+            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.07] transition-colors flex-shrink-0">
+            + Token
+          </button>
+
+          <button onClick={(e) => { e.stopPropagation(); setScryN(1) }}
+            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.07] transition-colors flex-shrink-0">
+            Scry
+          </button>
+
+          <button onClick={(e) => { e.stopPropagation(); setMillN(1) }}
+            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.07] transition-colors flex-shrink-0">
+            Mill
+          </button>
+
+          <button onClick={(e) => { e.stopPropagation(); shuffleLibrary() }}
+            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.07] transition-colors flex-shrink-0">
+            Shuffle
+          </button>
+
+          <button onClick={(e) => { e.stopPropagation(); proliferate() }}
+            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.07] transition-colors flex-shrink-0">
+            Proliferate
+          </button>
+
+          <div className="w-px h-4 flex-shrink-0" style={{ background: "rgba(255,255,255,0.07)" }} />
+
+          {/* Phase tracker */}
+          <div className="flex items-center gap-0.5 flex-shrink-0">
+            {PHASES.map(phase => {
+              const active = ps.gamePhase === phase.id
+              return (
+                <button key={phase.id}
+                  onClick={(e) => { e.stopPropagation(); upd(s => ({ ...s, gamePhase: phase.id })) }}
+                  className="px-2 py-0.5 rounded text-[10px] font-bold transition-all"
+                  title={phase.label}
+                  style={{
+                    background: active ? `${phase.color}22` : "transparent",
+                    color: active ? phase.color : "rgba(255,255,255,0.25)",
+                    border: `1px solid ${active ? phase.color : "transparent"}`,
+                  }}>
+                  {phase.short}
+                </button>
+              )
+            })}
+            <button onClick={(e) => { e.stopPropagation(); advancePhase() }}
+              className="ml-1 w-6 h-6 flex items-center justify-center rounded text-zinc-500 hover:text-white hover:bg-white/[0.08] text-sm font-bold transition-colors"
+              title="Next phase (N)">→</button>
+          </div>
+
+          <span className="text-[10px] text-zinc-700 font-bold flex-shrink-0">T{ps.turn}</span>
         </div>
 
-        <span className="text-[10px] text-zinc-700 font-bold flex-shrink-0">T{ps.turn}</span>
-
-        <div className="flex-1" />
-
-        {/* Your life */}
-        <div className="flex items-center gap-1 flex-shrink-0">
+        {/* Always-visible right controls */}
+        <div className="flex items-center gap-1 px-2 py-1.5 flex-shrink-0 border-l"
+          style={{ borderColor: "rgba(255,255,255,0.06)" }}>
           <button onClick={() => adjustLife(-1)} className="w-6 h-6 rounded flex items-center justify-center text-zinc-500 hover:text-red-400 hover:bg-white/[0.08] font-bold text-base transition-colors">−</button>
           <span className="text-xl font-bold tabular-nums w-10 text-center"
             style={{ color: ps.life <= 5 ? "#ef4444" : ps.life <= 10 ? "#f97316" : "#ffffff" }}>{ps.life}</span>
           <button onClick={() => adjustLife(+1)} className="w-6 h-6 rounded flex items-center justify-center text-zinc-500 hover:text-green-400 hover:bg-white/[0.08] font-bold text-base transition-colors">+</button>
           <span className="text-[9px] text-zinc-600 uppercase tracking-wider">Life</span>
+
+          <div className="w-px h-4 mx-1" style={{ background: "rgba(255,255,255,0.07)" }} />
+
+          <button onClick={onClose} className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.07] transition-colors">
+            <X className="w-4 h-4" />
+          </button>
         </div>
-
-        <div className="w-px h-4 flex-shrink-0" style={{ background: "rgba(255,255,255,0.07)" }} />
-
-        <button onClick={onClose} className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.07] transition-colors flex-shrink-0">
-          <X className="w-4 h-4" />
-        </button>
       </div>
 
       {/* ── Panels strip — always between header and battlefield ──────────── */}
