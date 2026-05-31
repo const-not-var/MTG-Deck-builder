@@ -507,11 +507,18 @@ export function DeckEditor({ deckId }: Props) {
   const saltColor = totalSalt < 7 ? "#22c55e" : totalSalt < 15 ? "#14b8a6" : totalSalt < 25 ? "#eab308" : totalSalt < 40 ? "#f97316" : "#ef4444"
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden">
+    <div
+      className="flex flex-col flex-1"
+      style={{ overflowX: "hidden", overflowY: isMobile && mobileTab === "cards" ? "auto" : "hidden" }}
+    >
       {/* Editor header */}
       <div
         className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-3.5 border-b border-white/[0.06] flex-shrink-0"
-        style={{ background: "rgba(6,7,30,0.94)", backdropFilter: "blur(20px)" }}
+        style={{
+          background: "rgba(6,7,30,0.94)",
+          backdropFilter: "blur(20px)",
+          ...(isMobile ? { position: "sticky", top: 0, zIndex: 40 } : {}),
+        }}
       >
         <button
           onClick={() => router.push("/decks")}
@@ -649,10 +656,10 @@ export function DeckEditor({ deckId }: Props) {
       </div>
 
       {/* Main 3-column layout */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className={`flex ${isMobile && mobileTab === "cards" ? "" : "flex-1 overflow-hidden"}`}>
         {/* Left: card search */}
         <div
-          className="flex-shrink-0 border-r flex flex-col overflow-hidden"
+          className={`flex-shrink-0 border-r flex flex-col ${isMobile && mobileTab === "cards" ? "" : "overflow-hidden"}`}
           style={{
             width: isMobile ? (mobileTab === "search" ? "100%" : 0) : leftOpen ? 288 : 0,
             transition: isMobile ? "none" : "width 0.35s cubic-bezier(0.4,0,0.2,1)",
@@ -661,7 +668,7 @@ export function DeckEditor({ deckId }: Props) {
           }}
         >
           <div
-            className="flex flex-col h-full"
+            className={`flex flex-col ${isMobile && mobileTab === "cards" ? "" : "h-full"}`}
             style={{ width: isMobile ? "100%" : 288, opacity: (isMobile ? mobileTab === "search" : leftOpen) ? 1 : 0, transition: isMobile ? "none" : "opacity 0.2s", pointerEvents: (isMobile ? mobileTab === "search" : leftOpen) ? "auto" : "none" }}
           >
             <div className="px-4 pt-4 pb-3">
@@ -681,7 +688,7 @@ export function DeckEditor({ deckId }: Props) {
 
         {/* Center: horizontal solitaire-style card columns */}
         <div
-          className="flex-1 relative overflow-hidden flex flex-col"
+          className={`flex-1 relative flex flex-col ${isMobile && mobileTab === "cards" ? "" : "overflow-hidden"}`}
           style={{ background: "rgba(6,7,30,0.15)", display: isMobile && mobileTab !== "cards" ? "none" : "flex" }}
         >
           {/* Panel toggle buttons — desktop only */}
@@ -714,7 +721,7 @@ export function DeckEditor({ deckId }: Props) {
 
         {/* Mobile: vertical scrollable card list */}
         {isMobile ? (
-          <div className="flex-1 overflow-y-auto">
+          <div>
             {deck.cards.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center px-6">
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
@@ -735,7 +742,7 @@ export function DeckEditor({ deckId }: Props) {
                 }, 0)
                 return (
                   <div key={key}>
-                    <div className="flex items-center gap-2 px-4 py-2 sticky top-0 z-10"
+                    <div className="flex items-center gap-2 px-4 py-2"
                       style={{ background: "rgba(6,7,30,0.95)", backdropFilter: "blur(8px)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                       <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
                       <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color }}>{label}</span>
@@ -834,7 +841,7 @@ export function DeckEditor({ deckId }: Props) {
 
         {/* Right: stats */}
         <div
-          className="flex-shrink-0 border-l flex flex-col overflow-hidden"
+          className={`flex-shrink-0 border-l flex flex-col ${isMobile && mobileTab === "cards" ? "" : "overflow-hidden"}`}
           style={{
             width: isMobile ? (mobileTab === "stats" ? "100%" : 0) : rightOpen ? 288 : 0,
             transition: isMobile ? "none" : "width 0.35s cubic-bezier(0.4,0,0.2,1)",
@@ -843,7 +850,7 @@ export function DeckEditor({ deckId }: Props) {
           }}
         >
           <div
-            className="flex flex-col h-full overflow-y-auto"
+            className={`flex flex-col ${isMobile && mobileTab === "cards" ? "" : "h-full overflow-y-auto"}`}
             style={{ width: isMobile ? "100%" : 288, opacity: (isMobile ? mobileTab === "stats" : rightOpen) ? 1 : 0, transition: isMobile ? "none" : "opacity 0.2s", pointerEvents: (isMobile ? mobileTab === "stats" : rightOpen) ? "auto" : "none" }}
           >
             <DeckStats cards={deck.cards} validation={validation} />
@@ -855,7 +862,7 @@ export function DeckEditor({ deckId }: Props) {
       {isMobile && (
         <div
           className="flex-shrink-0 border-t"
-          style={{ background: "rgba(6,7,30,0.97)", borderColor: "rgba(255,255,255,0.06)", position: "relative", zIndex: 50 }}
+          style={{ background: "rgba(6,7,30,0.97)", borderColor: "rgba(255,255,255,0.06)", position: mobileTab === "cards" ? "sticky" : "relative", bottom: mobileTab === "cards" ? 0 : undefined, zIndex: 50 }}
         >
           <div className="flex">
             {([

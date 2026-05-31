@@ -167,7 +167,7 @@ export function CardSearch({ onCardSelect, placeholder = "Card name or collector
               )}
 
               {/* Printings list */}
-              <div className="max-h-[55vh] overflow-y-auto">
+              <div className="max-h-[55vh] overflow-y-auto" style={{ overscrollBehavior: "contain" }}>
                 {printings.flatMap((card) => {
                   const img = getImage(card, "small")
                   const price = card.prices?.usd

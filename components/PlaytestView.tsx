@@ -173,6 +173,7 @@ interface BFCard {
   counters: Record<string, number>
   x: number
   y: number
+  isCopy?: boolean
 }
 
 interface Opponent {
@@ -518,18 +519,20 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
     upd(s => {
       const src = s.battlefield.find(c => c.id === id)
       if (!src) return s
-      return { ...s, battlefield: [...s.battlefield, makeBFC(src.card, src.x + 20, src.y + 20, "copy")] }
+      const copy = makeBFC(src.card, src.x + 20, src.y + 20, "copy")
+      copy.isCopy = true
+      return { ...s, battlefield: [...s.battlefield, copy] }
     }), [upd])
 
   const toGY = useCallback((id: string) =>
     upd(s => {
       const bf = s.battlefield.find(c => c.id === id)
       if (!bf) return s
-      const isToken = bf.card.scryfallId.startsWith("token-")
+      const vanishes = bf.card.scryfallId.startsWith("token-") || !!bf.isCopy
       return {
         ...s,
         battlefield: s.battlefield.filter(c => c.id !== id),
-        graveyard: isToken ? s.graveyard : [...s.graveyard, bf.card],
+        graveyard: vanishes ? s.graveyard : [...s.graveyard, bf.card],
       }
     }), [upd])
 
@@ -537,11 +540,11 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
     upd(s => {
       const bf = s.battlefield.find(c => c.id === id)
       if (!bf) return s
-      const isToken = bf.card.scryfallId.startsWith("token-")
+      const vanishes = bf.card.scryfallId.startsWith("token-") || !!bf.isCopy
       return {
         ...s,
         battlefield: s.battlefield.filter(c => c.id !== id),
-        exile: isToken ? s.exile : [...s.exile, bf.card],
+        exile: vanishes ? s.exile : [...s.exile, bf.card],
       }
     }), [upd])
 
@@ -1005,6 +1008,16 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
                       <span>×{count}</span>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Copy badge */}
+              {bfc.isCopy && (
+                <div className="absolute top-1 left-1 pointer-events-none" style={{ zIndex: 2 }}>
+                  <span className="text-[8px] font-black px-1 py-0.5 rounded"
+                    style={{ background: "rgba(14,165,233,0.25)", color: "#38bdf8", border: "1px solid rgba(14,165,233,0.45)", textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>
+                    COPY
+                  </span>
                 </div>
               )}
 

@@ -10,7 +10,7 @@ interface Props {
 
 export function DeckEditorWrapper({ deckId, userName }: Props) {
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#06071e" }}>
+    <div className="h-screen overflow-hidden flex flex-col" style={{ background: "#06071e" }}>
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
