@@ -72,13 +72,13 @@ export function DecksClient({ userName }: Props) {
         <Navbar userName={userName} />
 
         {/* Page header */}
-        <div className="max-w-7xl mx-auto w-full px-6 pt-12 pb-8 animate-fade-in">
+        <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-8 sm:pt-12 pb-6 sm:pb-8 animate-fade-in">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-xs font-bold text-amber-500/70 uppercase tracking-[0.18em] mb-2.5">
                 Commander Vault
               </p>
-              <h1 className="text-4xl font-bold text-white tracking-tight leading-none">
+              <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight leading-none">
                 {userName ? `${userName}'s Decks` : "My Decks"}
               </h1>
               <p className="text-sm text-zinc-400/80 mt-3">
@@ -97,7 +97,7 @@ export function DecksClient({ userName }: Props) {
           </div>
         </div>
 
-        <main className="flex-1 max-w-7xl mx-auto w-full px-6 pb-14">
+        <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 pb-14">
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
               {Array.from({ length: 10 }).map((_, i) => (

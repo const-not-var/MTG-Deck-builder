@@ -49,7 +49,7 @@ export function Navbar({ userName }: NavbarProps) {
         <nav className="flex items-center gap-1">
           <Link
             href="/decks"
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            className={`hidden sm:block px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
               path === "/decks"
                 ? "text-amber-400 bg-amber-500/10 border border-amber-500/20"
                 : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60"
@@ -62,7 +62,7 @@ export function Navbar({ userName }: NavbarProps) {
             className="flex items-center gap-1.5 ml-1 px-3 py-1.5 rounded-lg text-sm font-bold bg-amber-500 text-zinc-950 hover:bg-amber-400 shadow-md shadow-amber-500/25 hover:-translate-y-px transition-all"
           >
             <Plus className="w-3.5 h-3.5" />
-            New Deck
+            <span className="hidden sm:inline">New Deck</span>
           </Link>
         </nav>
 

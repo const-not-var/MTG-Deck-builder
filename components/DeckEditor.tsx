@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Save, Trash2, ArrowLeft, Loader2, Check, Pencil, Swords, RefreshCw, ChevronLeft, ChevronRight, FlaskConical } from "lucide-react"
+import { Save, Trash2, ArrowLeft, Loader2, Check, Pencil, Swords, RefreshCw, ChevronLeft, ChevronRight, FlaskConical, Search, Layers, BarChart2 } from "lucide-react"
 import type { ScryfallCard, CardInDeck, Deck } from "@/types"
 import { getCardImageUri, getCardImageUriBack, isBasicLand } from "@/lib/scryfall"
 import { validateDeck } from "@/lib/validation"
@@ -70,6 +70,15 @@ export function DeckEditor({ deckId }: Props) {
   const [leftOpen, setLeftOpen] = useState(true)
   const [rightOpen, setRightOpen] = useState(true)
   const [playtesting, setPlaytesting] = useState(false)
+  const [mobileTab, setMobileTab] = useState<"search" | "cards" | "stats">("cards")
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener("resize", check)
+    return () => window.removeEventListener("resize", check)
+  }, [])
 
   const addToast = useCallback((type: Toast["type"], message: string) => {
     const id = ++toastId.current
@@ -500,7 +509,7 @@ export function DeckEditor({ deckId }: Props) {
     <div className="flex flex-col h-[calc(100vh-56px)]">
       {/* Editor header */}
       <div
-        className="flex items-center gap-3 px-5 py-3.5 border-b border-white/[0.06] flex-shrink-0"
+        className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-3.5 border-b border-white/[0.06] flex-shrink-0"
         style={{ background: "rgba(6,7,30,0.94)", backdropFilter: "blur(20px)" }}
       >
         <button
@@ -542,10 +551,10 @@ export function DeckEditor({ deckId }: Props) {
           )}
         </div>
 
-        <div className="flex items-center gap-3 flex-shrink-0">
-          {/* Salt meter */}
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          {/* Salt meter — hidden on mobile */}
           <div
-            className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl cursor-default"
+            className="hidden md:flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl cursor-default"
             title="Total deck salt — sum of all cards' EDHREC salt scores"
             style={{
               background: saltLoaded ? `${saltColor}12` : "rgba(255,255,255,0.04)",
@@ -567,7 +576,7 @@ export function DeckEditor({ deckId }: Props) {
             </span>
           </div>
 
-          <div className="w-px h-8 bg-white/[0.06]" />
+          <div className="hidden md:block w-px h-8 bg-white/[0.06]" />
 
           {/* Card count */}
           <div className="flex flex-col items-end gap-1">
@@ -600,7 +609,7 @@ export function DeckEditor({ deckId }: Props) {
 
           <button
             onClick={() => setPlaytesting(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.07] border border-white/[0.07] transition-all"
+            className="hidden md:flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.07] border border-white/[0.07] transition-all"
           >
             <FlaskConical className="w-3.5 h-3.5" />
             Playtest
@@ -616,14 +625,14 @@ export function DeckEditor({ deckId }: Props) {
             }`}
           >
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : saved ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
-            {saving ? "Saving…" : saved ? "Saved" : "Save"}
+            <span className="hidden sm:inline">{saving ? "Saving…" : saved ? "Saved" : "Save"}</span>
           </button>
 
           <button
             onClick={handleRefreshCardData}
             disabled={refreshing || saving}
             title="Re-fetch card data from Scryfall — picks up errata and repairs decks missing oracle text"
-            className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.06] disabled:opacity-40 transition-colors"
+            className="hidden sm:block p-1.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.06] disabled:opacity-40 transition-colors"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
           </button>
@@ -644,15 +653,15 @@ export function DeckEditor({ deckId }: Props) {
         <div
           className="flex-shrink-0 border-r flex flex-col overflow-hidden"
           style={{
-            width: leftOpen ? 288 : 0,
-            transition: "width 0.35s cubic-bezier(0.4,0,0.2,1)",
+            width: isMobile ? (mobileTab === "search" ? "100%" : 0) : leftOpen ? 288 : 0,
+            transition: isMobile ? "none" : "width 0.35s cubic-bezier(0.4,0,0.2,1)",
             background: "rgba(6,7,30,0.60)",
-            borderColor: leftOpen ? "rgba(255,255,255,0.05)" : "transparent",
+            borderColor: (isMobile ? mobileTab === "search" : leftOpen) ? "rgba(255,255,255,0.05)" : "transparent",
           }}
         >
           <div
             className="flex flex-col h-full"
-            style={{ width: 288, opacity: leftOpen ? 1 : 0, transition: "opacity 0.2s", pointerEvents: leftOpen ? "auto" : "none" }}
+            style={{ width: isMobile ? "100%" : 288, opacity: (isMobile ? mobileTab === "search" : leftOpen) ? 1 : 0, transition: isMobile ? "none" : "opacity 0.2s", pointerEvents: (isMobile ? mobileTab === "search" : leftOpen) ? "auto" : "none" }}
           >
             <div className="px-4 pt-4 pb-3">
               <div className="flex items-center gap-2 mb-3">
@@ -670,30 +679,37 @@ export function DeckEditor({ deckId }: Props) {
         </div>
 
         {/* Center: horizontal solitaire-style card columns */}
-        <div className="flex-1 relative overflow-hidden flex flex-col" style={{ background: "rgba(6,7,30,0.15)" }}>
-          {/* Panel toggle buttons — always visible in top corners */}
-          <div className="absolute top-3 left-3 z-20">
-            <button
-              onClick={() => setLeftOpen((o) => !o)}
-              title={leftOpen ? "Collapse search" : "Expand search"}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-zinc-600 hover:text-zinc-200 transition-all hover:bg-white/[0.07]"
-              style={{ border: "1px solid rgba(255,255,255,0.06)", background: "rgba(6,7,30,0.7)", backdropFilter: "blur(8px)" }}
-            >
-              <ChevronLeft className="w-3 h-3 transition-transform duration-300" style={{ transform: leftOpen ? "rotate(0deg)" : "rotate(180deg)" }} />
-              <span className="text-[9px] font-bold uppercase tracking-widest">Search</span>
-            </button>
-          </div>
-          <div className="absolute top-3 right-3 z-20">
-            <button
-              onClick={() => setRightOpen((o) => !o)}
-              title={rightOpen ? "Collapse stats" : "Expand stats"}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-zinc-600 hover:text-zinc-200 transition-all hover:bg-white/[0.07]"
-              style={{ border: "1px solid rgba(255,255,255,0.06)", background: "rgba(6,7,30,0.7)", backdropFilter: "blur(8px)" }}
-            >
-              <span className="text-[9px] font-bold uppercase tracking-widest">Stats</span>
-              <ChevronRight className="w-3 h-3 transition-transform duration-300" style={{ transform: rightOpen ? "rotate(0deg)" : "rotate(180deg)" }} />
-            </button>
-          </div>
+        <div
+          className="flex-1 relative overflow-hidden flex flex-col"
+          style={{ background: "rgba(6,7,30,0.15)", display: isMobile && mobileTab !== "cards" ? "none" : "flex" }}
+        >
+          {/* Panel toggle buttons — desktop only */}
+          {!isMobile && (
+            <>
+              <div className="absolute top-3 left-3 z-20">
+                <button
+                  onClick={() => setLeftOpen((o) => !o)}
+                  title={leftOpen ? "Collapse search" : "Expand search"}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-zinc-600 hover:text-zinc-200 transition-all hover:bg-white/[0.07]"
+                  style={{ border: "1px solid rgba(255,255,255,0.06)", background: "rgba(6,7,30,0.7)", backdropFilter: "blur(8px)" }}
+                >
+                  <ChevronLeft className="w-3 h-3 transition-transform duration-300" style={{ transform: leftOpen ? "rotate(0deg)" : "rotate(180deg)" }} />
+                  <span className="text-[9px] font-bold uppercase tracking-widest">Search</span>
+                </button>
+              </div>
+              <div className="absolute top-3 right-3 z-20">
+                <button
+                  onClick={() => setRightOpen((o) => !o)}
+                  title={rightOpen ? "Collapse stats" : "Expand stats"}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-zinc-600 hover:text-zinc-200 transition-all hover:bg-white/[0.07]"
+                  style={{ border: "1px solid rgba(255,255,255,0.06)", background: "rgba(6,7,30,0.7)", backdropFilter: "blur(8px)" }}
+                >
+                  <span className="text-[9px] font-bold uppercase tracking-widest">Stats</span>
+                  <ChevronRight className="w-3 h-3 transition-transform duration-300" style={{ transform: rightOpen ? "rotate(0deg)" : "rotate(180deg)" }} />
+                </button>
+              </div>
+            </>
+          )}
 
         <div
           ref={scrollRef}
@@ -783,23 +799,47 @@ export function DeckEditor({ deckId }: Props) {
         <div
           className="flex-shrink-0 border-l flex flex-col overflow-hidden"
           style={{
-            width: rightOpen ? 288 : 0,
-            transition: "width 0.35s cubic-bezier(0.4,0,0.2,1)",
+            width: isMobile ? (mobileTab === "stats" ? "100%" : 0) : rightOpen ? 288 : 0,
+            transition: isMobile ? "none" : "width 0.35s cubic-bezier(0.4,0,0.2,1)",
             background: "rgba(6,7,30,0.60)",
-            borderColor: rightOpen ? "rgba(255,255,255,0.05)" : "transparent",
+            borderColor: (isMobile ? mobileTab === "stats" : rightOpen) ? "rgba(255,255,255,0.05)" : "transparent",
           }}
         >
           <div
             className="flex flex-col h-full overflow-y-auto"
-            style={{ width: 288, opacity: rightOpen ? 1 : 0, transition: "opacity 0.2s", pointerEvents: rightOpen ? "auto" : "none" }}
+            style={{ width: isMobile ? "100%" : 288, opacity: (isMobile ? mobileTab === "stats" : rightOpen) ? 1 : 0, transition: isMobile ? "none" : "opacity 0.2s", pointerEvents: (isMobile ? mobileTab === "stats" : rightOpen) ? "auto" : "none" }}
           >
             <DeckStats cards={deck.cards} validation={validation} />
           </div>
         </div>
       </div>
 
-      {/* Playtester overlay */}
-      {playtesting && <PlaytestView cards={deck.cards} onClose={() => setPlaytesting(false)} />}
+      {/* Mobile bottom tab bar */}
+      {isMobile && (
+        <div
+          className="flex flex-shrink-0 border-t"
+          style={{ background: "rgba(6,7,30,0.97)", borderColor: "rgba(255,255,255,0.06)" }}
+        >
+          {([
+            { key: "search", label: "Search", Icon: Search },
+            { key: "cards",  label: "Cards",  Icon: Layers },
+            { key: "stats",  label: "Stats",  Icon: BarChart2 },
+          ] as const).map(({ key, label, Icon }) => (
+            <button
+              key={key}
+              onClick={() => setMobileTab(key)}
+              className="flex-1 flex flex-col items-center gap-1 py-2.5 transition-colors"
+              style={{ color: mobileTab === key ? "#f59e0b" : "#52525b" }}
+            >
+              <Icon className="w-4 h-4" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider">{label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Playtester overlay — desktop only */}
+      {playtesting && !isMobile && <PlaytestView cards={deck.cards} onClose={() => setPlaytesting(false)} />}
 
       {/* Toast notifications */}
       <div className="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none">
