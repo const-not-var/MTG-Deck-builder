@@ -1169,7 +1169,7 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
                 className="flex-shrink-0 flex flex-col items-center gap-1 group/hand"
                 style={{ opacity: isDragging ? 0.2 : 1, transition: "opacity 0.15s" }}>
                 <div className="transition-all duration-150 group-hover/hand:-translate-y-2 group-hover/hand:shadow-2xl"
-                  style={{ width: W, height: H, position: "relative", borderRadius: 8 }}>
+                  style={{ width: W, height: H - 10, position: "relative", overflow: "hidden", borderRadius: 8 }}>
                   {activeUri ? (
                     <img src={activeUri} alt={card.name} draggable={false}
                       className="shadow-lg select-none"
