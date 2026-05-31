@@ -119,9 +119,10 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
       {/* Thumbnail */}
       <div
         className="relative flex-shrink-0 cursor-pointer"
-        onMouseEnter={(e) => scheduleShow(e.clientX, e.clientY)}
-        onMouseMove={(e) => { if (showPreview) setHoverPos({ x: e.clientX, y: e.clientY }) }}
-        onMouseLeave={scheduleHide}
+        onClick={isMobile ? () => setShowPreview(true) : undefined}
+        onMouseEnter={isMobile ? undefined : (e) => scheduleShow(e.clientX, e.clientY)}
+        onMouseMove={isMobile ? undefined : (e) => { if (showPreview) setHoverPos({ x: e.clientX, y: e.clientY }) }}
+        onMouseLeave={isMobile ? undefined : scheduleHide}
       >
         {card.imageUri && !imgError ? (
           <img
@@ -183,21 +184,21 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
       </div>
 
       {/* Actions */}
-      <div className={`flex items-center gap-0.5 transition-opacity flex-shrink-0 ${alwaysShowActions ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+      <div className={`flex items-center transition-opacity flex-shrink-0 ${alwaysShowActions ? "opacity-100 gap-2" : "opacity-0 group-hover:opacity-100 gap-0.5"}`}>
         {/* Quantity controls for basic lands and "any number" cards */}
         {isMultiCopy && (
           <>
             <button
               onClick={() => onQuantityChange(card.scryfallId, -1)}
               title="Remove one copy"
-              className="w-5 h-5 flex items-center justify-center rounded hover:bg-zinc-700/80 text-zinc-500 hover:text-zinc-200 transition-colors text-sm font-bold leading-none"
+              className={`flex items-center justify-center rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-100 transition-colors font-bold leading-none ${alwaysShowActions ? "w-9 h-9 text-base" : "w-5 h-5 text-sm"}`}
             >
               −
             </button>
             <button
               onClick={() => onQuantityChange(card.scryfallId, +1)}
               title={limit === Infinity ? "Add one more copy" : `Add one more (max ${limit})`}
-              className="w-5 h-5 flex items-center justify-center rounded hover:bg-zinc-700/80 text-zinc-500 hover:text-zinc-200 transition-colors text-sm font-bold leading-none"
+              className={`flex items-center justify-center rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-100 transition-colors font-bold leading-none ${alwaysShowActions ? "w-9 h-9 text-base" : "w-5 h-5 text-sm"}`}
             >
               +
             </button>
@@ -208,17 +209,17 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
           <button
             onClick={() => onToggleCommander(card.scryfallId)}
             title={card.isCommander ? "Remove as commander" : "Set as commander"}
-            className="p-1.5 rounded-lg hover:bg-zinc-700/80 text-zinc-500 hover:text-amber-400 transition-colors"
+            className={`rounded-lg hover:bg-zinc-700/80 text-zinc-500 hover:text-amber-400 transition-colors ${alwaysShowActions ? "p-2.5" : "p-1.5"}`}
           >
-            {card.isCommander ? <CircleSlash className="w-3.5 h-3.5" /> : <Crown className="w-3.5 h-3.5" />}
+            {card.isCommander ? <CircleSlash className={alwaysShowActions ? "w-4 h-4" : "w-3.5 h-3.5"} /> : <Crown className={alwaysShowActions ? "w-4 h-4" : "w-3.5 h-3.5"} />}
           </button>
         )}
         <button
           onClick={() => onRemove(card.scryfallId)}
           title="Remove all copies"
-          className="p-1.5 rounded-lg hover:bg-zinc-700/80 text-zinc-500 hover:text-red-400 transition-colors"
+          className={`rounded-lg hover:bg-red-500/15 text-zinc-500 hover:text-red-400 transition-colors ${alwaysShowActions ? "p-2.5" : "p-1.5"}`}
         >
-          <X className="w-3.5 h-3.5" />
+          <X className={alwaysShowActions ? "w-4 h-4" : "w-3.5 h-3.5"} />
         </button>
       </div>
 
