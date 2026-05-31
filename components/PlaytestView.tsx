@@ -333,6 +333,8 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
 
   const bfRef = useRef<HTMLDivElement>(null)
   const bfSizeRef = useRef({ w: 0, h: 0 })
+  const navScrollRef = useRef<HTMLDivElement>(null)
+  const navDrag = useRef({ active: false, dragging: false, startX: 0, scrollLeft: 0 })
   const gyRef = useRef<HTMLButtonElement>(null)
   const exileRef = useRef<HTMLButtonElement>(null)
   const handZoneRef = useRef<HTMLDivElement>(null)
@@ -750,9 +752,22 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
       <div className="flex items-center flex-shrink-0 select-none"
         style={{ background: "rgba(6,7,30,0.98)", borderBottom: "1px solid rgba(255,255,255,0.06)", minHeight: 44 }}>
 
-        {/* Scrollable actions — all buttons at natural size, scroll when window too narrow */}
-        <div className="flex items-center gap-2 px-3 py-1.5 overflow-x-auto flex-1 min-w-0"
-          style={{ scrollbarWidth: "none" }}>
+        {/* Scrollable actions — drag or scroll horizontally when window too narrow */}
+        <div
+          ref={navScrollRef}
+          className="flex items-center gap-2 px-3 py-1.5 overflow-x-auto flex-1 min-w-0"
+          style={{ scrollbarWidth: "none", cursor: navDrag.current.dragging ? "grabbing" : "default" }}
+          onMouseDown={e => { navDrag.current = { active: true, dragging: false, startX: e.pageX, scrollLeft: navScrollRef.current?.scrollLeft ?? 0 } }}
+          onMouseMove={e => {
+            if (!navDrag.current.active || !navScrollRef.current) return
+            const dist = e.pageX - navDrag.current.startX
+            if (!navDrag.current.dragging && Math.abs(dist) < 4) return
+            navDrag.current.dragging = true
+            navScrollRef.current.scrollLeft = navDrag.current.scrollLeft - dist
+          }}
+          onMouseUp={() => { navDrag.current.active = false; navDrag.current.dragging = false }}
+          onMouseLeave={() => { navDrag.current.active = false; navDrag.current.dragging = false }}
+        >
 
           <button onClick={reset}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.07] transition-colors flex-shrink-0">
