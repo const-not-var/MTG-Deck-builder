@@ -2,9 +2,13 @@ import { NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { connectDB } from "@/lib/db"
 import User from "@/models/User"
+import { rateLimit, getIP } from "@/lib/rateLimit"
 
 export async function POST(req: Request) {
   try {
+    const { allowed, retryAfter } = rateLimit(`register:${getIP(req)}`, 5, 15 * 60 * 1000)
+    if (!allowed) return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429, headers: { "Retry-After": String(retryAfter) } })
+
     const { name, email, password } = await req.json()
 
     if (!name || !email || !password) {
