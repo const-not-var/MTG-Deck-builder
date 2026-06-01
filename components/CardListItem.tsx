@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
+import { createPortal } from "react-dom"
 import { X, Crown, CircleSlash, Trash2 } from "lucide-react"
 import type { CardInDeck } from "@/types"
 import { HoloCard } from "./HoloCard"
@@ -53,8 +54,10 @@ function SaltPill({ salt }: { salt: number }) {
 export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommander, commanderColorIdentity, hasCommander, alwaysShowActions }: Props) {
   const [imgError, setImgError] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [zoomed, setZoomed] = useState(false)
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 })
   const [isMobile, setIsMobile] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   // Swipe-to-remove state
   const [swipeX, setSwipeX] = useState(0)
@@ -65,6 +68,7 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
 
   useEffect(() => {
     setIsMobile(window.innerWidth < 768)
+    setMounted(true)
   }, [])
   const hideRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const showRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -158,6 +162,7 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
     : ""
 
   return (
+    <>
     <div className="relative overflow-hidden rounded-xl">
       {/* Swipe-to-remove backdrop (mobile) */}
       {isMobile && swipeX > 0 && (
@@ -183,10 +188,10 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
       {/* Thumbnail */}
       <div
         className="relative flex-shrink-0 cursor-pointer"
-        onClick={isMobile ? () => { if (!didSwipeRef.current) setShowPreview(true) } : undefined}
-        onMouseEnter={isMobile ? undefined : (e) => scheduleShow(e.clientX, e.clientY)}
-        onMouseMove={isMobile ? undefined : (e) => { if (showPreview) setHoverPos({ x: e.clientX, y: e.clientY }) }}
-        onMouseLeave={isMobile ? undefined : scheduleHide}
+        onClick={() => { if (!didSwipeRef.current) setZoomed(true) }}
+        onMouseEnter={(e) => scheduleShow(e.clientX, e.clientY)}
+        onMouseMove={(e) => { if (showPreview) setHoverPos({ x: e.clientX, y: e.clientY }) }}
+        onMouseLeave={scheduleHide}
       >
         {card.imageUri && !imgError ? (
           <img
@@ -306,48 +311,64 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
         </button>
       </div>
 
-      {/* Card preview */}
-      {showPreview && card.imageUri && (
-        <>
-          {/* Mobile: full-screen backdrop to dismiss on tap */}
-          {isMobile && (
-            <div
-              className="fixed inset-0 z-[99]"
-              onClick={() => setShowPreview(false)}
-            />
-          )}
+      {/* Desktop hover tooltip */}
+      {showPreview && !isMobile && card.imageUri && (
+        <div
+          className="fixed z-[100]"
+          style={{
+            left: Math.min(hoverPos.x + 16, window.innerWidth - 230),
+            top: Math.max(hoverPos.y - 100, 8),
+            pointerEvents: "none",
+          }}
+        >
           <div
-            className="fixed z-[100]"
-            style={isMobile ? {
-              left: "50%",
-              top: "50%",
-              transform: "translate(-50%, -50%)",
-              pointerEvents: "auto",
-            } : {
-              left: Math.min(hoverPos.x + 16, window.innerWidth - 230),
-              top: Math.max(hoverPos.y - 100, 8),
-              pointerEvents: "none",
-            }}
-            onClick={() => isMobile && setShowPreview(false)}
+            className="bg-zinc-900 rounded-xl overflow-hidden shadow-2xl border border-zinc-700/60 w-52 pointer-events-auto"
+            onMouseEnter={cancelHide}
+            onMouseLeave={scheduleHide}
           >
-            <div
-              className="bg-zinc-900 rounded-xl overflow-hidden shadow-2xl border border-zinc-700/60 w-52 pointer-events-auto"
-              onMouseEnter={isMobile ? undefined : cancelHide}
-              onMouseLeave={isMobile ? undefined : scheduleHide}
-            >
-              <HoloCard
-                src={card.imageUri}
-                alt={card.name}
-                imgStyle={{ borderRadius: "5%" }}
-                imgClassName="w-full"
-                foil={!!card.isFoil}
-                mobileAnimate={isMobile && !!card.isFoil}
-              />
-            </div>
+            <HoloCard
+              src={card.imageUri}
+              alt={card.name}
+              imgStyle={{ borderRadius: "5%" }}
+              imgClassName="w-full"
+              foil={!!card.isFoil}
+              mobileAnimate={false}
+            />
           </div>
-        </>
+        </div>
       )}
     </div>
     </div>
+
+    {/* Zoom modal — portal to document.body escapes all overflow/transform ancestors */}
+    {zoomed && card.imageUri && mounted && createPortal(
+      <>
+        <div
+          className="fixed inset-0 z-[9998] bg-black/70"
+          onClick={() => setZoomed(false)}
+        />
+        <div
+          className="fixed z-[9999] flex items-center justify-center"
+          style={{ inset: 0, pointerEvents: "none" }}
+        >
+          <div
+            className="relative rounded-2xl overflow-hidden shadow-2xl"
+            style={{ width: 260, pointerEvents: "auto" }}
+            onClick={() => setZoomed(false)}
+          >
+            <HoloCard
+              src={card.imageUri}
+              alt={card.name}
+              imgStyle={{ borderRadius: "5%" }}
+              imgClassName="w-full"
+              foil={!!card.isFoil}
+              mobileAnimate={!!card.isFoil}
+            />
+          </div>
+        </div>
+      </>,
+      document.body
+    )}
+    </>
   )
 }
