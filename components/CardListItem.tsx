@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { X, Crown, CircleSlash } from "lucide-react"
+import { X, Crown, CircleSlash, Trash2 } from "lucide-react"
 import type { CardInDeck } from "@/types"
 import { HoloCard } from "./HoloCard"
 import { isCommanderEligible } from "@/lib/commander"
@@ -56,6 +56,13 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 })
   const [isMobile, setIsMobile] = useState(false)
 
+  // Swipe-to-remove state
+  const [swipeX, setSwipeX] = useState(0)
+  const [swipeAnimating, setSwipeAnimating] = useState(false)
+  const swipeXRef = useRef(0)
+  const touchOrigin = useRef({ x: 0, y: 0, locked: false, isHorizontal: false })
+  const didSwipeRef = useRef(false)
+
   useEffect(() => {
     setIsMobile(window.innerWidth < 768)
   }, [])
@@ -83,6 +90,44 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
     if (showPreview) return
     showRef.current = setTimeout(() => setShowPreview(true), 80)
   }, [cancelHide, showPreview])
+
+  // Swipe gesture handlers (mobile only)
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchOrigin.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, locked: false, isHorizontal: false }
+    didSwipeRef.current = false
+    swipeXRef.current = swipeX
+    setSwipeAnimating(false)
+  }, [swipeX])
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    const dx = touchOrigin.current.x - e.touches[0].clientX
+    const dy = Math.abs(touchOrigin.current.y - e.touches[0].clientY)
+
+    if (!touchOrigin.current.locked) {
+      if (Math.abs(dx) < 4 && dy < 4) return
+      touchOrigin.current.isHorizontal = Math.abs(dx) > dy
+      touchOrigin.current.locked = true
+    }
+
+    if (touchOrigin.current.isHorizontal && dx > 0) {
+      const clamped = Math.min(dx, 110)
+      swipeXRef.current = clamped
+      setSwipeX(clamped)
+      if (clamped > 8) didSwipeRef.current = true
+    }
+  }, [])
+
+  const handleTouchEnd = useCallback(() => {
+    setSwipeAnimating(true)
+    if (swipeXRef.current >= 70) {
+      swipeXRef.current = 400
+      setSwipeX(400)
+      setTimeout(() => onRemove(card.scryfallId), 220)
+    } else {
+      swipeXRef.current = 0
+      setSwipeX(0)
+    }
+  }, [onRemove, card.scryfallId])
 
   const isColorViolation =
     hasCommander &&
@@ -113,13 +158,32 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
     : ""
 
   return (
+    <div className="relative overflow-hidden rounded-xl">
+      {/* Swipe-to-remove backdrop (mobile) */}
+      {isMobile && swipeX > 0 && (
+        <div
+          className="absolute inset-y-0 right-0 flex items-center justify-center bg-red-500 pointer-events-none"
+          style={{ width: Math.min(swipeX, 90) }}
+          aria-hidden
+        >
+          {swipeX > 28 && <Trash2 className="w-4 h-4 text-white" />}
+        </div>
+      )}
     <div
-      className={`group flex items-center gap-3 px-3 py-2 rounded-xl transition-all relative ${accentBorder} ${activeBg} ${hoverBg}`}
+      className={`group flex items-center gap-3 px-3 py-2 rounded-xl transition-colors relative ${accentBorder} ${activeBg} ${hoverBg}`}
+      style={isMobile ? {
+        transform: `translateX(-${Math.min(swipeX, 400)}px)`,
+        transition: swipeAnimating ? "transform 0.22s cubic-bezier(0.2,0,0,1)" : "none",
+        willChange: "transform",
+      } : undefined}
+      onTouchStart={isMobile ? handleTouchStart : undefined}
+      onTouchMove={isMobile ? handleTouchMove : undefined}
+      onTouchEnd={isMobile ? handleTouchEnd : undefined}
     >
       {/* Thumbnail */}
       <div
         className="relative flex-shrink-0 cursor-pointer"
-        onClick={isMobile ? () => setShowPreview(true) : undefined}
+        onClick={isMobile ? () => { if (!didSwipeRef.current) setShowPreview(true) } : undefined}
         onMouseEnter={isMobile ? undefined : (e) => scheduleShow(e.clientX, e.clientY)}
         onMouseMove={isMobile ? undefined : (e) => { if (showPreview) setHoverPos({ x: e.clientX, y: e.clientY }) }}
         onMouseLeave={isMobile ? undefined : scheduleHide}
@@ -128,6 +192,7 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
           <img
             src={card.imageUri}
             alt={card.name}
+            loading="lazy"
             onError={() => setImgError(true)}
             className="w-10 h-[58px] object-cover object-top rounded-md shadow-sm"
             style={{
@@ -173,31 +238,49 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
         </div>
         <div className="flex items-center gap-2 mt-0.5">
           {card.isFoil && card.prices?.usdFoil ? (
-            <span className="text-[10px] text-blue-400/80 flex-shrink-0">${card.prices.usdFoil} ✦</span>
+            card.tcgplayerUrl ? (
+              <a href={card.tcgplayerUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-400/80 flex-shrink-0 hover:text-blue-300 underline decoration-dotted underline-offset-2">
+                ${card.prices.usdFoil} ✦
+              </a>
+            ) : (
+              <span className="text-[10px] text-blue-400/80 flex-shrink-0">${card.prices.usdFoil} ✦</span>
+            )
           ) : card.prices?.usd ? (
-            <span className="text-[10px] text-green-400/70 flex-shrink-0">${card.prices.usd}</span>
+            card.tcgplayerUrl ? (
+              <a href={card.tcgplayerUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-green-400/70 flex-shrink-0 hover:text-green-300 underline decoration-dotted underline-offset-2">
+                ${card.prices.usd}
+              </a>
+            ) : (
+              <span className="text-[10px] text-green-400/70 flex-shrink-0">${card.prices.usd}</span>
+            )
           ) : card.prices?.usdFoil ? (
-            <span className="text-[10px] text-blue-400/80 flex-shrink-0">${card.prices.usdFoil} ✦</span>
+            card.tcgplayerUrl ? (
+              <a href={card.tcgplayerUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-400/80 flex-shrink-0 hover:text-blue-300 underline decoration-dotted underline-offset-2">
+                ${card.prices.usdFoil} ✦
+              </a>
+            ) : (
+              <span className="text-[10px] text-blue-400/80 flex-shrink-0">${card.prices.usdFoil} ✦</span>
+            )
           ) : null}
           {card.salt !== undefined && <SaltPill salt={card.salt} />}
         </div>
       </div>
 
       {/* Actions */}
-      <div className={`flex items-center transition-opacity flex-shrink-0 ${alwaysShowActions ? "opacity-100 gap-2" : "opacity-0 group-hover:opacity-100 gap-0.5"}`}>
+      <div className={`flex items-center transition-opacity flex-shrink-0 ${alwaysShowActions ? "opacity-100 gap-2" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 gap-0.5"}`}>
         {/* Quantity controls for basic lands and "any number" cards */}
         {isMultiCopy && (
           <>
             <button
               onClick={() => onQuantityChange(card.scryfallId, -1)}
-              title="Remove one copy"
+              aria-label={`Remove one copy of ${card.name}`}
               className={`flex items-center justify-center rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-100 transition-colors font-bold leading-none ${alwaysShowActions ? "w-9 h-9 text-base" : "w-5 h-5 text-sm"}`}
             >
               −
             </button>
             <button
               onClick={() => onQuantityChange(card.scryfallId, +1)}
-              title={limit === Infinity ? "Add one more copy" : `Add one more (max ${limit})`}
+              aria-label={limit === Infinity ? `Add one more copy of ${card.name}` : `Add one more copy of ${card.name} (max ${limit})`}
               className={`flex items-center justify-center rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-100 transition-colors font-bold leading-none ${alwaysShowActions ? "w-9 h-9 text-base" : "w-5 h-5 text-sm"}`}
             >
               +
@@ -208,7 +291,7 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
         {isCommanderEligible(card) && (
           <button
             onClick={() => onToggleCommander(card.scryfallId)}
-            title={card.isCommander ? "Remove as commander" : "Set as commander"}
+            aria-label={card.isCommander ? `Remove ${card.name} as commander` : `Set ${card.name} as commander`}
             className={`rounded-lg hover:bg-zinc-700/80 text-zinc-500 hover:text-amber-400 transition-colors ${alwaysShowActions ? "p-2.5" : "p-1.5"}`}
           >
             {card.isCommander ? <CircleSlash className={alwaysShowActions ? "w-4 h-4" : "w-3.5 h-3.5"} /> : <Crown className={alwaysShowActions ? "w-4 h-4" : "w-3.5 h-3.5"} />}
@@ -216,7 +299,7 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
         )}
         <button
           onClick={() => onRemove(card.scryfallId)}
-          title="Remove all copies"
+          aria-label={`Remove ${card.name} from deck`}
           className={`rounded-lg hover:bg-red-500/15 text-zinc-500 hover:text-red-400 transition-colors ${alwaysShowActions ? "p-2.5" : "p-1.5"}`}
         >
           <X className={alwaysShowActions ? "w-4 h-4" : "w-3.5 h-3.5"} />
@@ -264,6 +347,7 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
           </div>
         </>
       )}
+    </div>
     </div>
   )
 }

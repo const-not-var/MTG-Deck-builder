@@ -3,9 +3,13 @@ import crypto from "crypto"
 import { Resend } from "resend"
 import { connectDB } from "@/lib/db"
 import User from "@/models/User"
+import { rateLimit, getIP } from "@/lib/rateLimit"
 
 export async function POST(req: Request) {
   try {
+    const { allowed, retryAfter } = rateLimit(`forgot:${getIP(req)}`, 3, 15 * 60 * 1000)
+    if (!allowed) return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429, headers: { "Retry-After": String(retryAfter) } })
+
     const resend = new Resend(process.env.RESEND_API_KEY)
     const { email } = await req.json()
     if (!email) return NextResponse.json({ error: "Email is required" }, { status: 400 })

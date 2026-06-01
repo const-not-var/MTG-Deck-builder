@@ -44,6 +44,17 @@ export function DeckStats({ cards, validation }: Props) {
     return counts
   }, [cards])
 
+  const top5Expensive = useMemo(() => {
+    return [...cards]
+      .map((c) => {
+        const price = parseFloat((c.isFoil ? c.prices?.usdFoil : c.prices?.usd) ?? c.prices?.usdFoil ?? c.prices?.usd ?? "0")
+        return { ...c, unitPrice: isNaN(price) ? 0 : price }
+      })
+      .filter((c) => c.unitPrice > 0)
+      .sort((a, b) => b.unitPrice - a.unitPrice)
+      .slice(0, 5)
+  }, [cards])
+
   const saltStats = useMemo(() => {
     const salted = cards.filter((c) => c.salt !== undefined)
     const total = salted.reduce((s, c) => s + (c.salt ?? 0), 0)
@@ -130,14 +141,42 @@ export function DeckStats({ cards, validation }: Props) {
 
       {/* Total value */}
       <div
-        className="flex items-center justify-between rounded-xl px-3.5 py-2.5"
+        className="rounded-xl px-3.5 py-2.5"
         style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
       >
-        <span className="text-xs text-zinc-500 flex items-center gap-1.5">
-          <TrendingUp className="w-3.5 h-3.5" />
-          Total Value
-        </span>
-        <span className="text-sm font-semibold text-green-400 tabular-nums">${totalPrice.toFixed(2)}</span>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-zinc-500 flex items-center gap-1.5">
+            <TrendingUp className="w-3.5 h-3.5" />
+            Total Value
+          </span>
+          <span className="text-sm font-semibold text-green-400 tabular-nums">${totalPrice.toFixed(2)}</span>
+        </div>
+
+        {/* Most expensive cards */}
+        {top5Expensive.length > 0 && (
+          <div className="mt-3 space-y-1.5 pt-3 border-t border-white/[0.05]">
+            <p className="text-[10px] text-zinc-600 uppercase tracking-wider font-medium mb-2">Priciest Cards</p>
+            {top5Expensive.map((c) => (
+              <div key={c.scryfallId} className="flex items-center justify-between gap-2">
+                {c.tcgplayerUrl ? (
+                  <a
+                    href={c.tcgplayerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] text-zinc-400 truncate hover:text-amber-400 transition-colors underline decoration-dotted underline-offset-2"
+                  >
+                    {c.name}
+                  </a>
+                ) : (
+                  <span className="text-[10px] text-zinc-400 truncate">{c.name}</span>
+                )}
+                <span className="text-[10px] font-bold tabular-nums flex-shrink-0 text-green-400">
+                  ${c.unitPrice.toFixed(2)}{c.isFoil ? " ✦" : ""}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Deck salt */}

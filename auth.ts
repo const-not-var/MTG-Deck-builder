@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs"
 import { connectDB } from "@/lib/db"
 import User from "@/models/User"
 import { authConfig } from "./auth.config"
+import { rateLimit } from "@/lib/rateLimit"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -15,6 +16,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       authorize: async (credentials) => {
         if (!credentials?.email || !credentials?.password) return null
+
+        // Rate limit by email to stop credential stuffing against a specific account
+        const key = `login:${String(credentials.email).toLowerCase()}`
+        const { allowed } = rateLimit(key, 5, 15 * 60 * 1000)
+        if (!allowed) throw new Error("Too many login attempts. Try again in 15 minutes.")
 
         await connectDB()
         const user = await User.findOne({ email: credentials.email })
