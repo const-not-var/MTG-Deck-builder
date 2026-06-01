@@ -66,11 +66,15 @@ export type GameAction =
   | { type: "TAP"; instanceId: string }
   | { type: "UNTAP_ALL" }
   | { type: "MOVE"; instanceId: string; fromZone: Zone; toZone: Zone }
+  | { type: "MOVE_TO_TOP"; instanceId: string; fromZone: Zone }
   | { type: "ADJUST_LIFE"; delta: number }
   | { type: "RECORD_CMD_DAMAGE"; fromSeat: number; amount: number }
   | { type: "NEXT_PHASE" }
   | { type: "ADD_COUNTER"; instanceId: string; counterName: string; delta: number }
   | { type: "CAST_COMMANDER"; instanceId: string }
   | { type: "SHUFFLE" }
+  | { type: "MILL"; count: number }
+  | { type: "SCRY_BOTTOM"; instanceId: string }
   | { type: "START_GAME" }
   | { type: "CHAT"; text: string }
+  | { type: "CREATE_TOKEN"; instanceId: string; name: string; typeLine: string; colorIdentity: string[] }

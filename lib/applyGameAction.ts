@@ -101,6 +101,59 @@ export function applyAction(game: GameState, userId: string, action: GameAction)
       return updated()
     }
 
+    case "MILL": {
+      const count = Math.min(action.count, player.library.length)
+      const milled = player.library.splice(0, count)
+      player.graveyard = [...player.graveyard, ...milled]
+      player.libraryCount = player.library.length
+      return updated()
+    }
+
+    case "MOVE_TO_TOP": {
+      const fromArr = getZone(player, action.fromZone)
+      const cardIdx = fromArr.findIndex(c => c.instanceId === action.instanceId)
+      if (cardIdx === -1) return game
+      const [card] = fromArr.splice(cardIdx, 1)
+      setZone(player, action.fromZone, fromArr)
+      player.library = [{ ...card, tapped: false }, ...player.library]
+      player.libraryCount = player.library.length
+      return updated()
+    }
+
+    case "ADD_COUNTER": {
+      player.battlefield = player.battlefield.map(c =>
+        c.instanceId === action.instanceId
+          ? { ...c, counters: { ...c.counters, [action.counterName]: Math.max(0, (c.counters[action.counterName] ?? 0) + action.delta) } }
+          : c)
+      return updated()
+    }
+
+    case "CREATE_TOKEN": {
+      const token: GameCard = {
+        instanceId: action.instanceId,
+        scryfallId: `token-${action.instanceId}`,
+        name: action.name,
+        imageUri: "",
+        typeLine: action.typeLine,
+        oracleText: "",
+        manaCost: "",
+        cmc: 0,
+        colorIdentity: action.colorIdentity,
+        tapped: false,
+        counters: {},
+      }
+      player.battlefield = [...player.battlefield, token]
+      return updated()
+    }
+
+    case "SCRY_BOTTOM": {
+      const cardIdx = player.library.findIndex(c => c.instanceId === action.instanceId)
+      if (cardIdx === -1) return game
+      const [card] = player.library.splice(cardIdx, 1)
+      player.library = [...player.library, card]
+      return updated()
+    }
+
     case "NEXT_PHASE": {
       const idx = PHASES.indexOf(game.turn.phase)
       const nextPhase = PHASES[(idx + 1) % PHASES.length]
