@@ -1,16 +1,14 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
-import { Layers, LogOut, Plus, User } from "lucide-react"
+import { Layers, LogOut, User, Swords } from "lucide-react"
 
 interface NavbarProps {
   userName?: string | null
 }
 
 export function Navbar({ userName }: NavbarProps) {
-  const path = usePathname()
 
   return (
     <header
@@ -46,13 +44,14 @@ export function Navbar({ userName }: NavbarProps) {
           </span>
         </Link>
 
-        <nav className="flex items-center gap-1">
+        {/* Desktop nav links */}
+        <nav className="hidden md:flex items-center gap-1">
           <Link
-            href="/decks/new"
-            className="flex items-center gap-1.5 ml-1 px-3 py-1.5 rounded-lg text-sm font-bold bg-amber-500 text-zinc-950 hover:bg-amber-400 shadow-md shadow-amber-500/25 hover:-translate-y-px transition-all"
+            href="/game"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 transition-all"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">New Deck</span>
+            <Swords className="w-3.5 h-3.5" />
+            Play
           </Link>
         </nav>
 
@@ -67,10 +66,11 @@ export function Navbar({ userName }: NavbarProps) {
           )}
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
+            aria-label="Sign out"
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800/60 transition-all"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Sign out</span>
+            <span className="hidden sm:inline" aria-hidden>Sign out</span>
           </button>
         </div>
       </div>

@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { name, description } = await req.json()
+  const { name, description, cards } = await req.json()
   if (!name?.trim()) return NextResponse.json({ error: "Deck name is required" }, { status: 400 })
 
   await connectDB()
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     userId: session.user.id,
     name: name.trim(),
     description: description ?? "",
-    cards: [],
+    cards: Array.isArray(cards) ? cards : [],
   })
 
   return NextResponse.json({ deck }, { status: 201 })

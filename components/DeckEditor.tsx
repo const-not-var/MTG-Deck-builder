@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Save, Trash2, ArrowLeft, Loader2, Check, Pencil, Swords, RefreshCw, ChevronLeft, ChevronRight, FlaskConical, Search, Layers, BarChart2 } from "lucide-react"
+import { Save, Trash2, ArrowLeft, Loader2, Check, Pencil, Swords, RefreshCw, ChevronLeft, ChevronRight, FlaskConical, Search, Layers, BarChart2, Upload, Copy, X, ChevronDown } from "lucide-react"
 import type { ScryfallCard, CardInDeck, Deck } from "@/types"
 import { getCardImageUri, getCardImageUriBack, isBasicLand } from "@/lib/scryfall"
 import { validateDeck } from "@/lib/validation"
@@ -61,11 +61,18 @@ export function DeckEditor({ deckId }: Props) {
   const [nameInput, setNameInput] = useState("")
   const scrollRef = useRef<HTMLDivElement>(null)
   const drag = useRef({ active: false, startX: 0, scrollLeft: 0 })
+  const removedCardRef = useRef<CardInDeck | null>(null)
   const [leftOpen, setLeftOpen] = useState(true)
   const [rightOpen, setRightOpen] = useState(true)
   const [playtesting, setPlaytesting] = useState(false)
   const [mobileTab, setMobileTab] = useState<"search" | "cards" | "stats">("cards")
   const [isMobile, setIsMobile] = useState(false)
+  const [savedAt, setSavedAt] = useState<Date | null>(null)
+  const [showImport, setShowImport] = useState(false)
+  const [importText, setImportText] = useState("")
+  const [importing, setImporting] = useState(false)
+  const [showFillBasics, setShowFillBasics] = useState(false)
+  const [basicCounts, setBasicCounts] = useState({ Plains: 0, Island: 0, Swamp: 0, Mountain: 0, Forest: 0 })
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -253,6 +260,198 @@ export function DeckEditor({ deckId }: Props) {
     setSaved(false)
   }, [])
 
+  const handleRemoveWithUndo = useCallback((scryfallId: string) => {
+    setDeck((d) => {
+      if (!d) return d
+      const card = d.cards.find((c) => c.scryfallId === scryfallId)
+      if (card) removedCardRef.current = card
+      return { ...d, cards: d.cards.filter((c) => c.scryfallId !== scryfallId) }
+    })
+    setSaved(false)
+    toast(`Removed ${removedCardRef.current?.name ?? "card"}`, {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          const card = removedCardRef.current
+          if (!card) return
+          setDeck((d) => d ? { ...d, cards: [...d.cards, card] } : d)
+          setSaved(false)
+          removedCardRef.current = null
+        },
+      },
+    })
+  }, [])
+
+  const handleDuplicate = useCallback(async () => {
+    if (!deck) return
+    try {
+      const res = await fetch("/api/decks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: `${deck.name} (Copy)`, cards: deck.cards }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      toast.success("Deck duplicated", {
+        action: { label: "Open", onClick: () => router.push(`/decks/${data.deck._id}`) },
+      })
+    } catch {
+      toast.error("Failed to duplicate deck.")
+    }
+  }, [deck, router])
+
+  const parseDecklist = (text: string): Array<{ quantity: number; name: string }> => {
+    const entries: Array<{ quantity: number; name: string }> = []
+    for (const raw of text.split("\n")) {
+      const line = raw.trim().replace(/^SB:\s*/i, "")
+      if (!line || line.startsWith("//") || line.startsWith("#")) continue
+      // Matches: "1 Sol Ring", "1x Sol Ring", "4 Forest (LCI) 280"
+      const m = line.match(/^(\d+)x?\s+(.+?)(?:\s+\([A-Z0-9]{2,6}\)\s+\d+.*)?$/)
+      if (!m) continue
+      const qty = Math.min(parseInt(m[1]), 99)
+      const name = m[2].trim()
+      if (name) entries.push({ quantity: qty, name })
+    }
+    return entries
+  }
+
+  const handleImport = async () => {
+    if (!deck || !importText.trim()) return
+    setImporting(true)
+    try {
+      const entries = parseDecklist(importText)
+      if (entries.length === 0) {
+        toast.error("No cards found. Use format: '1 Sol Ring'")
+        return
+      }
+
+      // Merge duplicate names, summing quantities
+      const nameQtyMap = new Map<string, number>()
+      for (const { quantity, name } of entries) {
+        nameQtyMap.set(name, (nameQtyMap.get(name) ?? 0) + quantity)
+      }
+
+      const res = await fetch("/api/cards/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ names: [...nameQtyMap.keys()] }),
+      })
+      if (!res.ok) throw new Error("API error")
+      const data = await res.json()
+
+      const cardMap = new Map<string, ScryfallCard>()
+      for (const card of data.cards ?? []) {
+        cardMap.set(card.name.toLowerCase(), card)
+      }
+
+      const toAdd: CardInDeck[] = []
+      let skipped = 0
+
+      for (const [name, qty] of nameQtyMap) {
+        const card = cardMap.get(name.toLowerCase())
+        if (!card) { skipped++; continue }
+
+        const legality = card.legalities?.commander
+        if (legality === "banned" || legality === "not_legal") { skipped++; continue }
+
+        const limit = getDeckLimit({ name: card.name, typeLine: card.type_line, oracleText: card.oracle_text ?? "" })
+        const existingQty = deck.cards.filter((c) => c.name === card.name).reduce((s, c) => s + c.quantity, 0)
+        const available = limit === Infinity ? qty : Math.max(0, limit - existingQty)
+        if (available === 0) { skipped++; continue }
+
+        toAdd.push({
+          scryfallId: card.id,
+          name: card.name,
+          quantity: Math.min(qty, available),
+          cmc: card.cmc,
+          typeLine: card.type_line,
+          colorIdentity: card.color_identity,
+          manaCost: card.mana_cost ?? "",
+          prices: { usd: card.prices?.usd ?? undefined, usdFoil: card.prices?.usd_foil ?? undefined },
+          imageUri: getCardImageUri(card),
+          imageUriBack: getCardImageUriBack(card),
+          oracleText: card.oracle_text ?? "",
+          isCommander: false,
+          isFoil: false,
+          hasFoil: !!(card.foil && card.prices?.usd_foil),
+          tcgplayerUrl: card.purchase_uris?.tcgplayer,
+          cardKingdomUrl: card.purchase_uris?.cardkingdom,
+          loyalty: card.loyalty,
+        })
+      }
+
+      const totalAdded = toAdd.reduce((s, c) => s + c.quantity, 0)
+      const notFoundCount = (data.notFound?.length ?? 0) + skipped
+
+      setDeck((d) => d ? { ...d, cards: [...d.cards, ...toAdd] } : d)
+      setSaved(false)
+      setShowImport(false)
+      setImportText("")
+
+      if (totalAdded === 0) {
+        toast.warning("No new cards added — all were already in your deck, illegal, or not found.")
+      } else {
+        toast.success(`Imported ${totalAdded} card${totalAdded !== 1 ? "s" : ""}${notFoundCount > 0 ? ` · ${notFoundCount} skipped` : ""}.`)
+      }
+
+      if (toAdd.length > 0) fetchSalt(toAdd.map((c) => c.name))
+    } catch {
+      toast.error("Import failed. Check your format and try again.")
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const handleFillBasics = async () => {
+    const names = (Object.entries(basicCounts) as [string, number][])
+      .filter(([, qty]) => qty > 0)
+      .map(([name]) => name)
+    if (names.length === 0) return
+
+    const res = await fetch("/api/cards/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ names }),
+    })
+    if (!res.ok) { toast.error("Failed to fetch basic land data."); return }
+    const data = await res.json()
+
+    const cardMap = new Map<string, ScryfallCard>()
+    for (const card of data.cards ?? []) cardMap.set(card.name.toLowerCase(), card)
+
+    const toAdd: CardInDeck[] = []
+    for (const [name, qty] of Object.entries(basicCounts) as [string, number][]) {
+      if (qty <= 0) continue
+      const card = cardMap.get(name.toLowerCase())
+      if (!card) continue
+      toAdd.push({
+        scryfallId: card.id,
+        name: card.name,
+        quantity: qty,
+        cmc: card.cmc,
+        typeLine: card.type_line,
+        colorIdentity: card.color_identity,
+        manaCost: card.mana_cost ?? "",
+        prices: { usd: card.prices?.usd ?? undefined, usdFoil: card.prices?.usd_foil ?? undefined },
+        imageUri: getCardImageUri(card),
+        imageUriBack: getCardImageUriBack(card),
+        oracleText: card.oracle_text ?? "",
+        isCommander: false,
+        isFoil: false,
+        hasFoil: false,
+        tcgplayerUrl: card.purchase_uris?.tcgplayer,
+        cardKingdomUrl: card.purchase_uris?.cardkingdom,
+      })
+    }
+
+    const total = toAdd.reduce((s, c) => s + c.quantity, 0)
+    setDeck((d) => d ? { ...d, cards: [...d.cards, ...toAdd] } : d)
+    setSaved(false)
+    setBasicCounts({ Plains: 0, Island: 0, Swamp: 0, Mountain: 0, Forest: 0 })
+    setShowFillBasics(false)
+    toast.success(`Added ${total} basic land${total !== 1 ? "s" : ""}.`)
+  }
+
   const handleQuantityChange = useCallback((scryfallId: string, delta: number) => {
     setDeck((d) => {
       if (!d) return d
@@ -386,6 +585,7 @@ export function DeckEditor({ deckId }: Props) {
       })
       if (!res.ok) throw new Error("Save failed")
       setSaved(true)
+      setSavedAt(new Date())
       toast.success("Deck saved!")
     } catch {
       toast.error("Failed to save. Try again.")
@@ -608,21 +808,45 @@ export function DeckEditor({ deckId }: Props) {
           </button>
 
           <button
-            onClick={handleSave}
-            disabled={saving || saved}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all ${
-              saved
-                ? "bg-green-500/15 text-green-400 border border-green-500/25"
-                : "bg-amber-500 text-zinc-950 hover:bg-amber-400 shadow-lg shadow-amber-500/20 disabled:opacity-50"
-            }`}
+            onClick={() => setShowImport(true)}
+            className="hidden md:flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.07] border border-white/[0.07] transition-all"
+            aria-label="Import decklist"
           >
-            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : saved ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
-            <span className="hidden sm:inline">{saving ? "Saving…" : saved ? "Saved" : "Save"}</span>
+            <Upload className="w-3.5 h-3.5" />
+            Import
           </button>
+
+          <div className="flex flex-col items-end gap-0.5">
+            <button
+              onClick={handleSave}
+              disabled={saving || saved}
+              aria-label={saving ? "Saving…" : saved ? "Saved" : "Save deck"}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                saved
+                  ? "bg-green-500/15 text-green-400 border border-green-500/25"
+                  : "bg-amber-500 text-zinc-950 hover:bg-amber-400 shadow-lg shadow-amber-500/20 disabled:opacity-50"
+              }`}
+            >
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : saved ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
+              <span className="hidden sm:inline">{saving ? "Saving…" : saved ? "Saved" : "Save"}</span>
+            </button>
+            {savedAt && saved && (
+              <span className="text-[9px] text-zinc-600 tabular-nums pr-0.5">
+                {(() => {
+                  const diff = Math.floor((Date.now() - savedAt.getTime()) / 1000)
+                  if (diff < 10) return "just now"
+                  if (diff < 60) return `${diff}s ago`
+                  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+                  return savedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+                })()}
+              </span>
+            )}
+          </div>
 
           <button
             onClick={handleRefreshCardData}
             disabled={refreshing || saving}
+            aria-label="Re-fetch card data from Scryfall"
             title="Re-fetch card data from Scryfall — picks up errata and repairs decks missing oracle text"
             className="hidden sm:block p-1.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.06] disabled:opacity-40 transition-colors"
           >
@@ -630,8 +854,18 @@ export function DeckEditor({ deckId }: Props) {
           </button>
 
           <button
+            onClick={handleDuplicate}
+            aria-label="Duplicate deck"
+            title="Duplicate this deck"
+            className="hidden sm:block p-1.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.06] transition-colors"
+          >
+            <Copy className="w-3.5 h-3.5" />
+          </button>
+
+          <button
             onClick={handleDelete}
             disabled={deleting}
+            aria-label="Delete deck"
             className="p-1.5 rounded-lg text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
           >
             {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
@@ -662,11 +896,66 @@ export function DeckEditor({ deckId }: Props) {
               </div>
               <CardSearch onCardSelect={handleCardSelect} />
             </div>
-            <div className="flex-1 flex items-start justify-center p-4 pt-2">
-              <p className="text-xs text-zinc-700 text-center leading-relaxed">
-                Search above and click a<br />printing to add it to your deck.
-              </p>
+
+            {/* Fill Basics */}
+            <div className="px-4 pb-4">
+              <button
+                onClick={() => setShowFillBasics((o) => !o)}
+                className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.04] transition-colors border border-white/[0.05]"
+              >
+                <span className="text-xs font-semibold">Fill Basic Lands</span>
+                <div className="flex items-center gap-1.5">
+                  {validation.cardCount < 100 && (
+                    <span className="text-[10px] tabular-nums text-zinc-600">{100 - validation.cardCount} slots left</span>
+                  )}
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showFillBasics ? "rotate-180" : ""}`} />
+                </div>
+              </button>
+
+              {showFillBasics && (
+                <div className="mt-2 p-3 rounded-xl space-y-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  {(["Plains", "Island", "Swamp", "Mountain", "Forest"] as const).map((land) => (
+                    <div key={land} className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-zinc-400 w-20">{land}</span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setBasicCounts((c) => ({ ...c, [land]: Math.max(0, c[land] - 1) }))}
+                          aria-label={`Remove one ${land}`}
+                          className="w-6 h-6 flex items-center justify-center rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-100 font-bold text-sm transition-colors"
+                        >
+                          −
+                        </button>
+                        <span className="text-sm font-semibold text-zinc-200 tabular-nums w-5 text-center">
+                          {basicCounts[land]}
+                        </span>
+                        <button
+                          onClick={() => setBasicCounts((c) => ({ ...c, [land]: c[land] + 1 }))}
+                          aria-label={`Add one ${land}`}
+                          className="w-6 h-6 flex items-center justify-center rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-100 font-bold text-sm transition-colors"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {(() => {
+                    const total = Object.values(basicCounts).reduce((s, n) => s + n, 0)
+                    const remaining = 100 - validation.cardCount
+                    return (
+                      <button
+                        onClick={handleFillBasics}
+                        disabled={total === 0 || total > remaining}
+                        className="w-full mt-1 py-2 rounded-lg text-xs font-bold bg-amber-500 text-zinc-950 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {total === 0 ? "Select basics above" : total > remaining ? `Too many (${total} > ${remaining} slots)` : `Add ${total} land${total !== 1 ? "s" : ""}`}
+                      </button>
+                    )
+                  })()}
+                </div>
+              )}
             </div>
+
+            <div className="flex-1" />
           </div>
         </div>
 
@@ -738,7 +1027,7 @@ export function DeckEditor({ deckId }: Props) {
                       <CardListItem
                         key={card.scryfallId}
                         card={card}
-                        onRemove={handleRemove}
+                        onRemove={handleRemoveWithUndo}
                         onQuantityChange={handleQuantityChange}
                         onToggleCommander={handleToggleCommander}
                         commanderColorIdentity={commanderColorIdentity}
@@ -795,7 +1084,7 @@ export function DeckEditor({ deckId }: Props) {
                     </div>
                     <CardStack
                       cards={sectionCards}
-                      onRemove={handleRemove}
+                      onRemove={handleRemoveWithUndo}
                       onQuantityChange={handleQuantityChange}
                       onToggleCommander={handleToggleCommander}
                       onToggleCompanion={handleToggleCompanion}
@@ -857,22 +1146,87 @@ export function DeckEditor({ deckId }: Props) {
               <button
                 key={key}
                 onClick={() => setMobileTab(key)}
-                className="flex-1 flex flex-col items-center gap-1 py-2.5 transition-colors"
+                className="flex-1 flex flex-col items-center gap-1 py-3 transition-colors"
                 style={{ color: mobileTab === key ? "#f59e0b" : "#52525b" }}
+                aria-label={label}
+                aria-current={mobileTab === key ? "page" : undefined}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-5 h-5" />
                 <span className="text-[10px] font-semibold uppercase tracking-wider">{label}</span>
               </button>
             ))}
           </div>
-          <p className="text-center text-[9px] text-zinc-800 leading-none pb-1.5 px-2">
-            commandervault.net is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.
-          </p>
+          <div style={{ height: "env(safe-area-inset-bottom, 0px)" }} />
         </div>
       )}
 
       {/* Playtester overlay — desktop only */}
       {playtesting && !isMobile && <PlaytestView cards={deck.cards} onClose={() => setPlaytesting(false)} />}
+
+      {/* Import modal */}
+      {showImport && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(12px)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowImport(false); setImportText("") } }}
+        >
+          <div
+            className="w-full max-w-lg animate-scale-in"
+            style={{
+              background: "rgba(10,10,22,0.97)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: "20px",
+              padding: "28px",
+              boxShadow: "0 30px 60px rgba(0,0,0,0.7)",
+            }}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="text-base font-bold text-zinc-100">Import Decklist</h2>
+                <p className="text-xs text-zinc-500 mt-0.5">Paste a list from Moxfield, EDHREC, or any standard format</p>
+              </div>
+              <button
+                onClick={() => { setShowImport(false); setImportText("") }}
+                aria-label="Close import"
+                className="text-zinc-500 hover:text-zinc-300 p-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <textarea
+              autoFocus
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+              placeholder={"1 Sol Ring\n1 Command Tower\n4 Forest\n1 Atraxa, Praetors' Voice\n..."}
+              rows={12}
+              className="w-full px-4 py-3 bg-zinc-800/60 border border-zinc-700/60 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/15 font-mono resize-none"
+            />
+
+            <div className="flex items-center justify-between mt-4 gap-3">
+              <p className="text-[11px] text-zinc-600">
+                {parseDecklist(importText).reduce((s, e) => s + e.quantity, 0)} cards detected
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setShowImport(false); setImportText("") }}
+                  className="px-4 py-2 rounded-xl text-sm text-zinc-400 border border-zinc-700/60 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleImport}
+                  disabled={importing || !importText.trim()}
+                  className="flex items-center gap-2 px-5 py-2 rounded-xl bg-amber-500 text-zinc-950 font-bold text-sm hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-500/25 transition-colors"
+                >
+                  {importing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {importing ? "Importing…" : "Import Cards"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )

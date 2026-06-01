@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useRef, useEffect } from "react"
+import { createPortal } from "react-dom"
 import { X, Shuffle, RotateCcw, FlipHorizontal2, Eye, Search } from "lucide-react"
 import type { CardInDeck } from "@/types"
 
@@ -330,6 +331,7 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
   const [handDrag, setHandDrag] = useState<HandDrag | null>(null)
   const [cmdDrag, setCmdDrag] = useState<CmdDrag | null>(null)
   const [dropTarget, setDropTarget] = useState<"battlefield" | "graveyard" | "exile" | "hand" | "commandZone" | null>(null)
+  const [mounted, setMounted] = useState(false)
   const cmdZoneRef = useRef<HTMLDivElement>(null)
 
   const bfRef = useRef<HTMLDivElement>(null)
@@ -365,6 +367,8 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
     obs.observe(bfRef.current)
     return () => obs.disconnect()
   }, [])
+
+  useEffect(() => { setMounted(true) }, [])
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
   useEffect(() => {
@@ -995,7 +999,7 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
                 transformOrigin: "center center",
                 transition: isDragging ? "none" : "transform 0.18s ease",
                 cursor: isDragging ? "grabbing" : "grab",
-                zIndex: isDragging ? 100 : 1,
+                zIndex: isDragging ? 200 : 40,
                 filter: bfc.tapped ? "brightness(0.8) saturate(0.8)" : "none",
               }}
               onMouseDown={(e) => {
@@ -1245,14 +1249,13 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
         </div>
       </div>
 
-      {/* ── Drag ghost ─────────────────────────────────────────────────────── */}
-      {(handDrag || cmdDrag) && (() => {
+      {/* ── Drag ghosts (portals — always above all stacking contexts) ──────── */}
+      {mounted && (handDrag || cmdDrag) && (() => {
         const drag = (handDrag ?? cmdDrag)!
         const card = drag.card
         const uri = card.imageUri
-        return (
-          <div className="fixed pointer-events-none z-[500]"
-            style={{ left: drag.x - W / 2, top: drag.y - H / 2, width: W, height: H, opacity: 0.92, transform: "scale(1.07) rotate(-1.5deg)", filter: "drop-shadow(0 24px 48px rgba(0,0,0,0.85))" }}>
+        return createPortal(
+          <div style={{ position: "fixed", pointerEvents: "none", zIndex: 9999, left: drag.x - W / 2, top: drag.y - H / 2, width: W, height: H, opacity: 0.92, transform: "scale(1.07) rotate(-1.5deg)", filter: "drop-shadow(0 24px 48px rgba(0,0,0,0.85))" }}>
             {uri ? (
               <img src={uri} alt={card.name} draggable={false} className="w-full h-full rounded-lg" style={{ objectFit: "cover", objectPosition: "top" }} />
             ) : (
@@ -1260,7 +1263,8 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
                 {card.name}
               </div>
             )}
-          </div>
+          </div>,
+          document.body
         )
       })()}
 
