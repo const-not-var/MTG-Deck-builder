@@ -1,11 +1,13 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
+import { createPortal } from "react-dom"
 import { X, Crown, CircleSlash, Trash2 } from "lucide-react"
 import type { CardInDeck } from "@/types"
 import { HoloCard } from "./HoloCard"
 import { isCommanderEligible } from "@/lib/commander"
 import { getDeckLimit } from "@/lib/rules"
+import { scryfallImage } from "@/lib/scryfall"
 
 interface Props {
   card: CardInDeck
@@ -306,8 +308,9 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
         </button>
       </div>
 
-      {/* Card preview */}
-      {showPreview && card.imageUri && (
+      {/* Card preview — portaled to <body> so a transformed/scrolling ancestor
+          (the swipe row uses transform + willChange) can't clip the fixed overlay. */}
+      {showPreview && card.imageUri && typeof document !== "undefined" && createPortal(
         <>
           {/* Mobile: full-screen backdrop to dismiss on tap */}
           {isMobile && (
@@ -336,7 +339,7 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
               onMouseLeave={isMobile ? undefined : scheduleHide}
             >
               <HoloCard
-                src={card.imageUri}
+                src={scryfallImage(card.imageUri, "large")}
                 alt={card.name}
                 imgStyle={{ borderRadius: "5%" }}
                 imgClassName="w-full"
@@ -345,7 +348,8 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
               />
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
     </div>

@@ -23,7 +23,7 @@ const features = [
   {
     icon: Swords,
     title: "Solo Playtesting",
-    body: "Drag cards onto a virtual playmat, tap permanents, track counters, and step through game phases — no opponent needed.",
+    body: "Drag cards onto a virtual playmat, tap permanents, scry, mill, and track counters — goldfish your deck with no opponent needed.",
     color: "#4ade80",
   },
 ]

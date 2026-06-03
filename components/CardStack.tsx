@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import { X, Crown, CircleSlash, FlipHorizontal2, Anchor } from "lucide-react"
 import type { CardInDeck } from "@/types"
 import { isCommanderEligible } from "@/lib/commander"
@@ -347,8 +348,9 @@ export function CardStack({
         </div>
       )}
 
-      {/* Zoom modal */}
-      {zoomed && (
+      {/* Zoom modal — portaled to <body> so the card wrapper's transform
+          (translateY) can't trap/clip this fixed overlay. */}
+      {zoomed && typeof document !== "undefined" && createPortal(
         <div
           className="fixed inset-0 z-[10000] flex items-center justify-center"
           style={{ background: "rgba(0,0,0,0.88)" }}
@@ -367,7 +369,8 @@ export function CardStack({
               {zoomed.card.name}
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </>
   )
