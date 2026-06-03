@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Layers, Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
+import { markTabAuthenticated } from "@/lib/tabSession"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -28,7 +29,7 @@ export default function LoginPage() {
     const res = await signIn("credentials", { email, password, redirect: false })
     setLoading(false)
     if (res?.error) setError("Invalid email or password — or your email isn't confirmed yet. Check your inbox for the confirmation link.")
-    else router.push("/decks")
+    else { markTabAuthenticated(); router.push("/decks") }
   }
 
   return (
