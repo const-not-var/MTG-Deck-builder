@@ -334,7 +334,8 @@ export function CardListItem({ card, onRemove, onQuantityChange, onToggleCommand
             onClick={() => isMobile && setShowPreview(false)}
           >
             <div
-              className="bg-zinc-900 rounded-xl overflow-hidden shadow-2xl border border-zinc-700/60 w-52 pointer-events-auto"
+              className="bg-zinc-900 rounded-xl overflow-hidden border border-zinc-700/60 pointer-events-auto"
+              style={{ width: isMobile ? "min(90vw, 62vh)" : 208 }}
               onMouseEnter={isMobile ? undefined : cancelHide}
               onMouseLeave={isMobile ? undefined : scheduleHide}
             >
