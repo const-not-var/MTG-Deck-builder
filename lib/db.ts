@@ -18,7 +18,7 @@ export async function connectDB() {
   if (cache.conn) return cache.conn
 
   if (!cache.promise) {
-    cache.promise = mongoose.connect(MONGODB_URI, { dbName: "mtg-commander-builder" })
+    cache.promise = mongoose.connect(MONGODB_URI, { dbName: process.env.MONGODB_DB ?? "mtg-commander-builder" })
   }
 
   cache.conn = await cache.promise

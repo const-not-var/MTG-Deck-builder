@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server"
+import { isValidObjectId } from "mongoose"
 import { auth } from "@/auth"
 import { connectDB } from "@/lib/db"
 import Game from "@/models/Game"
 import Deck from "@/models/Deck"
+import { readJson } from "@/lib/api"
 import { initPlayerState } from "@/lib/gameInit"
 import type { Deck as DeckType } from "@/types"
 
@@ -11,9 +13,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ code: s
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { code } = await params
-  const body = await req.json().catch(() => null)
-  const deckId: string | undefined = body?.deckId
-  if (!deckId) return NextResponse.json({ error: "deckId required" }, { status: 400 })
+  const body = await readJson(req)
+  const deckId: unknown = (body as { deckId?: unknown } | null)?.deckId
+  if (typeof deckId !== "string" || !isValidObjectId(deckId)) {
+    return NextResponse.json({ error: "Valid deckId required" }, { status: 400 })
+  }
 
   await connectDB()
 

@@ -1,17 +1,25 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Layers, Loader2, AlertCircle } from "lucide-react"
+import { Layers, Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [notice, setNotice] = useState("")
   const [loading, setLoading] = useState(false)
+
+  // Read the email-confirmation result from the verify-email redirect (no Suspense needed).
+  useEffect(() => {
+    const v = new URLSearchParams(window.location.search).get("verify")
+    if (v === "success") setNotice("Email confirmed — you can now log in.")
+    else if (v === "invalid") setError("That confirmation link is invalid or has expired.")
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -19,7 +27,7 @@ export default function LoginPage() {
     setLoading(true)
     const res = await signIn("credentials", { email, password, redirect: false })
     setLoading(false)
-    if (res?.error) setError("Invalid email or password.")
+    if (res?.error) setError("Invalid email or password — or your email isn't confirmed yet. Check your inbox for the confirmation link.")
     else router.push("/decks")
   }
 
@@ -52,6 +60,12 @@ export default function LoginPage() {
 
         <div className="rounded-2xl p-6 space-y-4"
           style={{ background: "rgba(10,10,22,0.85)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(24px)", boxShadow: "0 30px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)" }}>
+          {notice && (
+            <div className="flex items-center gap-2.5 text-sm text-green-400 bg-green-950/40 border border-green-500/20 rounded-xl px-3.5 py-2.5">
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+              {notice}
+            </div>
+          )}
           {error && (
             <div className="flex items-center gap-2.5 text-sm text-red-400 bg-red-950/40 border border-red-500/20 rounded-xl px-3.5 py-2.5">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />

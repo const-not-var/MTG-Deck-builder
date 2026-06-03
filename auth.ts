@@ -23,11 +23,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!allowed) throw new Error("Too many login attempts. Try again in 15 minutes.")
 
         await connectDB()
-        const user = await User.findOne({ email: credentials.email })
+        // Registration stores emails lowercased — match that here or mixed-case logins fail.
+        const user = await User.findOne({ email: String(credentials.email).toLowerCase() })
         if (!user) return null
 
         const valid = await bcrypt.compare(credentials.password as string, user.password)
         if (!valid) return null
+
+        // Block login while an email confirmation is still pending (a verifyToken
+        // exists only for accounts created with the email-confirmation flow).
+        if (!user.verified && user.verifyToken) return null
 
         return {
           id: user._id.toString(),
@@ -52,6 +57,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   session: {
     strategy: "jwt",
+    maxAge: 30 * 60,    // log out after 30 min of inactivity…
+    updateAge: 5 * 60,  // …sliding: refresh the token (at most every 5 min) while the user is active
   },
 })
 

@@ -39,7 +39,9 @@ export function initPlayerState(
   let idx = 0
 
   for (const card of deck.cards) {
-    for (let q = 0; q < card.quantity; q++) {
+    // Guard against a malformed quantity (undefined/0/NaN) silently dropping a card.
+    const qty = Math.max(1, Math.floor(Number(card.quantity)) || 1)
+    for (let q = 0; q < qty; q++) {
       const gc = cardToGameCard(card, userId, idx++)
       if (card.isCommander || card.isCompanion) {
         commandZone.push(gc)
@@ -67,6 +69,9 @@ export function initPlayerState(
     exile: [],
     commandZone,
     cmdCastCount: {},
+    playerCounters: {},
+    mulligans: 0,
+    kept: false,
     joined: true,
   }
 }

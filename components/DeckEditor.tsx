@@ -15,6 +15,17 @@ import { CardStack, CARD_W } from "./CardStack"
 import { CardListItem } from "./CardListItem"
 import { DeckStats } from "./DeckStats"
 import { PlaytestView } from "./PlaytestView"
+import { ConfirmDialog } from "./ConfirmDialog"
+
+// Signature of the user-editable contents of a deck (ignores enrich/salt metadata),
+// used to detect unsaved changes.
+function deckSignature(d: Deck): string {
+  return JSON.stringify({
+    n: d.name,
+    de: d.description ?? "",
+    c: d.cards.map(c => `${c.scryfallId}:${c.quantity}:${c.isCommander ? 1 : 0}:${c.isCompanion ? 1 : 0}:${c.isFoil ? 1 : 0}`),
+  })
+}
 
 const SECTIONS = [
   { key: "commander",     label: "Commander",     color: "#f59e0b", filter: (c: CardInDeck) => c.isCommander },
@@ -71,6 +82,10 @@ export function DeckEditor({ deckId }: Props) {
   const [showImport, setShowImport] = useState(false)
   const [importText, setImportText] = useState("")
   const [importing, setImporting] = useState(false)
+  // User-validation: confirm before removing a card / leaving with unsaved changes.
+  const [pendingRemove, setPendingRemove] = useState<string | null>(null)
+  const [confirmLeave, setConfirmLeave] = useState(false)
+  const savedSigRef = useRef("")
   const [showFillBasics, setShowFillBasics] = useState(false)
   const [basicCounts, setBasicCounts] = useState({ Plains: 0, Island: 0, Swamp: 0, Mountain: 0, Forest: 0 })
 
@@ -112,6 +127,7 @@ export function DeckEditor({ deckId }: Props) {
       .then((data) => {
         if (!data.deck) return
         setDeck(data.deck)
+        savedSigRef.current = deckSignature(data.deck)   // baseline for unsaved-change detection
         setNameInput(data.deck.name)
 
         // Backfill fields added after initial save (oracleText, purchase URLs, back-face image, loyalty).
@@ -343,21 +359,27 @@ export function DeckEditor({ deckId }: Props) {
       for (const card of data.cards ?? []) {
         cardMap.set(card.name.toLowerCase(), card)
       }
+      const aliases: Record<string, string> = data.aliases ?? {}   // requested name → fuzzy-resolved card name
 
       const toAdd: CardInDeck[] = []
-      let skipped = 0
+      const notImported: string[] = []
+      const corrected: string[] = []   // requested → fuzzy-resolved, so a bad auto-correction is visible
 
       for (const [name, qty] of nameQtyMap) {
-        const card = cardMap.get(name.toLowerCase())
-        if (!card) { skipped++; continue }
+        const resolvedName = (aliases[name.toLowerCase()] ?? name).toLowerCase()
+        const card = cardMap.get(resolvedName)
+        if (!card) { notImported.push(name); continue }
 
         const legality = card.legalities?.commander
-        if (legality === "banned" || legality === "not_legal") { skipped++; continue }
+        if (legality === "banned" || legality === "not_legal") { notImported.push(`${card.name} (not Commander-legal)`); continue }
 
         const limit = getDeckLimit({ name: card.name, typeLine: card.type_line, oracleText: card.oracle_text ?? "" })
         const existingQty = deck.cards.filter((c) => c.name === card.name).reduce((s, c) => s + c.quantity, 0)
         const available = limit === Infinity ? qty : Math.max(0, limit - existingQty)
-        if (available === 0) { skipped++; continue }
+        if (available === 0) { notImported.push(`${card.name} (already at max copies)`); continue }
+
+        // Card came in under a different name than typed — flag the correction.
+        if (card.name.toLowerCase() !== name.toLowerCase()) corrected.push(`"${name}" → ${card.name}`)
 
         toAdd.push({
           scryfallId: card.id,
@@ -381,17 +403,30 @@ export function DeckEditor({ deckId }: Props) {
       }
 
       const totalAdded = toAdd.reduce((s, c) => s + c.quantity, 0)
-      const notFoundCount = (data.notFound?.length ?? 0) + skipped
 
       setDeck((d) => d ? { ...d, cards: [...d.cards, ...toAdd] } : d)
       setSaved(false)
       setShowImport(false)
       setImportText("")
 
-      if (totalAdded === 0) {
-        toast.warning("No new cards added — all were already in your deck, illegal, or not found.")
-      } else {
-        toast.success(`Imported ${totalAdded} card${totalAdded !== 1 ? "s" : ""}${notFoundCount > 0 ? ` · ${notFoundCount} skipped` : ""}.`)
+      if (totalAdded > 0) {
+        toast.success(`Imported ${totalAdded} card${totalAdded !== 1 ? "s" : ""}.`)
+      } else if (notImported.length === 0) {
+        toast.warning("No new cards added — they were already in your deck.")
+      }
+      // Surface fuzzy auto-corrections so a wrong guess can be caught.
+      if (corrected.length > 0) {
+        toast.info(`Auto-corrected ${corrected.length} spelling${corrected.length !== 1 ? "s" : ""} — check these:`, {
+          description: corrected.join(", "),
+          duration: 15000,
+        })
+      }
+      // Always surface exactly which cards couldn't be imported, so nothing is lost silently.
+      if (notImported.length > 0) {
+        toast.warning(`Couldn't import ${notImported.length} card${notImported.length !== 1 ? "s" : ""} — check spelling:`, {
+          description: notImported.join(", "),
+          duration: 15000,
+        })
       }
 
       if (toAdd.length > 0) fetchSalt(toAdd.map((c) => c.name))
@@ -586,6 +621,7 @@ export function DeckEditor({ deckId }: Props) {
       if (!res.ok) throw new Error("Save failed")
       setSaved(true)
       setSavedAt(new Date())
+      savedSigRef.current = deckSignature(deck)   // current state is now the saved baseline
       toast.success("Deck saved!")
     } catch {
       toast.error("Failed to save. Try again.")
@@ -660,6 +696,18 @@ export function DeckEditor({ deckId }: Props) {
     }
   }
 
+  const dirty = !!deck && deckSignature(deck) !== savedSigRef.current
+
+  // Warn on tab close / refresh while there are unsaved changes.
+  useEffect(() => {
+    if (!dirty) return
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = "" }
+    window.addEventListener("beforeunload", handler)
+    return () => window.removeEventListener("beforeunload", handler)
+  }, [dirty])
+
+  const leave = () => { if (dirty) setConfirmLeave(true); else router.push("/decks") }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -705,7 +753,7 @@ export function DeckEditor({ deckId }: Props) {
         }}
       >
         <button
-          onClick={() => router.push("/decks")}
+          onClick={leave}
           className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-200 px-2.5 py-1.5 rounded-lg hover:bg-white/[0.06] transition-colors flex-shrink-0"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -809,11 +857,11 @@ export function DeckEditor({ deckId }: Props) {
 
           <button
             onClick={() => setShowImport(true)}
-            className="hidden md:flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.07] border border-white/[0.07] transition-all"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg text-sm font-semibold text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.07] border border-white/[0.07] transition-all"
             aria-label="Import decklist"
           >
             <Upload className="w-3.5 h-3.5" />
-            Import
+            <span className="hidden md:inline">Import</span>
           </button>
 
           <div className="flex flex-col items-end gap-0.5">
@@ -1027,7 +1075,7 @@ export function DeckEditor({ deckId }: Props) {
                       <CardListItem
                         key={card.scryfallId}
                         card={card}
-                        onRemove={handleRemoveWithUndo}
+                        onRemove={(id) => setPendingRemove(id)}
                         onQuantityChange={handleQuantityChange}
                         onToggleCommander={handleToggleCommander}
                         commanderColorIdentity={commanderColorIdentity}
@@ -1084,7 +1132,7 @@ export function DeckEditor({ deckId }: Props) {
                     </div>
                     <CardStack
                       cards={sectionCards}
-                      onRemove={handleRemoveWithUndo}
+                      onRemove={(id) => setPendingRemove(id)}
                       onQuantityChange={handleQuantityChange}
                       onToggleCommander={handleToggleCommander}
                       onToggleCompanion={handleToggleCompanion}
@@ -1162,6 +1210,28 @@ export function DeckEditor({ deckId }: Props) {
 
       {/* Playtester overlay — desktop only */}
       {playtesting && !isMobile && <PlaytestView cards={deck.cards} onClose={() => setPlaytesting(false)} />}
+
+      {/* Confirm removing a card */}
+      <ConfirmDialog
+        open={pendingRemove !== null}
+        title="Remove this card?"
+        message={`"${deck.cards.find(c => c.scryfallId === pendingRemove)?.name ?? "This card"}" will be removed from the deck.`}
+        confirmLabel="Remove"
+        danger
+        onConfirm={() => { if (pendingRemove) handleRemoveWithUndo(pendingRemove); setPendingRemove(null) }}
+        onCancel={() => setPendingRemove(null)}
+      />
+
+      {/* Confirm leaving with unsaved changes */}
+      <ConfirmDialog
+        open={confirmLeave}
+        title="Leave without saving?"
+        message="You have unsaved changes to this deck that will be lost."
+        confirmLabel="Leave"
+        danger
+        onConfirm={() => router.push("/decks")}
+        onCancel={() => setConfirmLeave(false)}
+      />
 
       {/* Import modal */}
       {showImport && (

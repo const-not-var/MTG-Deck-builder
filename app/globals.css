@@ -36,7 +36,12 @@ html {
 @media (max-width: 767px) {
   * { scrollbar-width: none; }
   *::-webkit-scrollbar { display: none; }
-  html, body { overscroll-behavior: none; touch-action: pan-x pan-y; }
+  /* `manipulation` keeps scroll + 2-finger pinch-zoom but kills double-tap
+     zoom, so any accidental zoom can always be pinched back out. */
+  html, body { overscroll-behavior: none; touch-action: manipulation; }
+  /* iOS Safari auto-zooms when focusing an input whose font is < 16px and
+     won't reliably zoom back out. Force form controls to 16px on mobile. */
+  input, textarea, select { font-size: 16px; }
 }
 
 /* ── Focus ─────────────────────────────────────────────────────────────────── */

@@ -19,6 +19,26 @@ export function getCardSmallImageUri(card: ScryfallCard): string {
   return ""
 }
 
+/**
+ * Re-point a stored Scryfall card-image URL at a different size. Scryfall's
+ * image CDN encodes the size as a path segment (…/normal/…/id.jpg, …/png/…/id.png),
+ * so we can upgrade a saved `normal` URL to `large`/`png` at render time without
+ * re-fetching — existing decks get sharper images with no re-import.
+ * `png` is the highest-resolution face (745×1040) and the only one served as .png.
+ * Non-Scryfall URLs (or already-correct ones) are returned untouched.
+ */
+export function scryfallImage(
+  uri: string | undefined | null,
+  size: "small" | "normal" | "large" | "png"
+): string {
+  if (!uri || !uri.includes("cards.scryfall.io")) return uri ?? ""
+  let out = uri.replace(/\/(small|normal|large|png|art_crop|border_crop)\//, `/${size}/`)
+  out = size === "png"
+    ? out.replace(/\.jpg(\?|$)/, ".png$1")
+    : out.replace(/\.png(\?|$)/, ".jpg$1")
+  return out
+}
+
 export async function autocompleteCards(query: string): Promise<string[]> {
   if (query.length < 2) return []
   const res = await fetch(`${BASE}/cards/autocomplete?q=${encodeURIComponent(query)}`, {
