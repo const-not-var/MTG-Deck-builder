@@ -1,0 +1,6 @@
+# Run the end-to-end suite before pushing. It builds/serves into an isolated
+# dir (.next-e2e) on port 3100 against a throwaway test DB, so it's safe to run
+# even while `next dev` is up. Requires MongoDB to be running.
+# Skip in a pinch with:  git push --no-verify
+echo "▶ pre-push: running E2E suite (npm run test:e2e)…"
+npm run test:e2e

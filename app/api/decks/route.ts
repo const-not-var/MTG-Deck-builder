@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { connectDB } from "@/lib/db"
 import DeckModel from "@/models/Deck"
+import { readJson, deckCreateSchema } from "@/lib/api"
 
 export async function GET() {
   const session = await auth()
@@ -19,15 +20,16 @@ export async function POST(req: Request) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { name, description, cards } = await req.json()
-  if (!name?.trim()) return NextResponse.json({ error: "Deck name is required" }, { status: 400 })
+  const parsed = deckCreateSchema.safeParse(await readJson(req))
+  if (!parsed.success) return NextResponse.json({ error: "Invalid deck data" }, { status: 400 })
+  const { name, description, cards } = parsed.data
 
   await connectDB()
   const deck = await DeckModel.create({
     userId: session.user.id,
-    name: name.trim(),
+    name,
     description: description ?? "",
-    cards: Array.isArray(cards) ? cards : [],
+    cards: cards ?? [],
   })
 
   return NextResponse.json({ deck }, { status: 201 })

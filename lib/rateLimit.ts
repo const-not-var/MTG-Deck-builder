@@ -15,6 +15,10 @@ export function rateLimit(
   limit: number,
   windowMs: number,
 ): { allowed: boolean; retryAfter: number } {
+  // Disabled only on the isolated E2E server so the test suite can create many
+  // accounts from one IP. Never set in production.
+  if (process.env.E2E_TEST === "1") return { allowed: true, retryAfter: 0 }
+
   const now = Date.now()
   const entry = store.get(key)
 

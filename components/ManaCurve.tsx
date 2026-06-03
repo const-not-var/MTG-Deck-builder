@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts"
 import type { CardInDeck } from "@/types"
 
@@ -19,8 +19,14 @@ export function ManaCurve({ cards }: Props) {
     return { data: d, max: Math.max(...d.map((d) => d.count), 1) }
   }, [cards])
 
+  // Only render the chart after mount, so Recharts never measures a 0-size
+  // container during SSR/first paint (the source of its width(-1) warning).
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   return (
     <div className="w-full h-28">
+      {mounted && (
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 4, right: 0, left: -28, bottom: 0 }} barCategoryGap="22%">
           <XAxis
@@ -59,6 +65,7 @@ export function ManaCurve({ cards }: Props) {
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      )}
     </div>
   )
 }

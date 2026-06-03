@@ -1,14 +1,17 @@
 "use client"
 
 import Link from "next/link"
+import { useState } from "react"
 import { signOut } from "next-auth/react"
 import { Layers, LogOut, User, Swords } from "lucide-react"
+import { ConfirmDialog } from "./ConfirmDialog"
 
 interface NavbarProps {
   userName?: string | null
 }
 
 export function Navbar({ userName }: NavbarProps) {
+  const [confirmLogout, setConfirmLogout] = useState(false)
 
   return (
     <header
@@ -65,7 +68,7 @@ export function Navbar({ userName }: NavbarProps) {
             </div>
           )}
           <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={() => setConfirmLogout(true)}
             aria-label="Sign out"
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800/60 transition-all"
           >
@@ -74,6 +77,15 @@ export function Navbar({ userName }: NavbarProps) {
           </button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmLogout}
+        title="Sign out?"
+        message="You'll need to log back in to access your decks."
+        confirmLabel="Sign out"
+        onConfirm={() => signOut({ callbackUrl: "/login" })}
+        onCancel={() => setConfirmLogout(false)}
+      />
     </header>
   )
 }

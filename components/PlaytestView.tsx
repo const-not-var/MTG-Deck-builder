@@ -4,166 +4,16 @@ import { useState, useCallback, useRef, useEffect } from "react"
 import { createPortal } from "react-dom"
 import { X, Shuffle, RotateCcw, FlipHorizontal2, Eye, Search } from "lucide-react"
 import type { CardInDeck } from "@/types"
+import { scryfallImage } from "@/lib/scryfall"
+import { COUNTER_DEFS, parseCardAbilities, counterColor, counterAbbr } from "@/lib/counters"
+import { useHandScroll, HandScrollButtons } from "@/components/HandScroller"
+import { useHoverPreview } from "@/components/HoverPreview"
 
 const W = 110
 const H = Math.round(W * 88 / 63)
 
-// ── Phase step tracker ────────────────────────────────────────────────────────
-type GamePhase = "untap" | "upkeep" | "draw" | "main1" | "combat" | "main2" | "end"
-const PHASES: { id: GamePhase; label: string; short: string; color: string }[] = [
-  { id: "untap",  label: "Untap",  short: "UT", color: "#6366f1" },
-  { id: "upkeep", label: "Upkeep", short: "UP", color: "#8b5cf6" },
-  { id: "draw",   label: "Draw",   short: "DR", color: "#3b82f6" },
-  { id: "main1",  label: "Main 1", short: "M1", color: "#22c55e" },
-  { id: "combat", label: "Combat", short: "CM", color: "#ef4444" },
-  { id: "main2",  label: "Main 2", short: "M2", color: "#16a34a" },
-  { id: "end",    label: "End",    short: "EN", color: "#f59e0b" },
-]
-function nextPhase(p: GamePhase): GamePhase {
-  const i = PHASES.findIndex(x => x.id === p)
-  return PHASES[(i + 1) % PHASES.length].id
-}
-
-// ── Counter definitions ───────────────────────────────────────────────────────
-// Ordered: common ones first so context menu groups naturally
-const COUNTER_DEFS: { pattern: RegExp; name: string; color: string; abbr: string }[] = [
-  { pattern: /\+1\/\+1 counter/i,                    name: "+1/+1",       color: "#22c55e", abbr: "+1/+1" },
-  { pattern: /-1\/-1 counter/i,                       name: "-1/-1",       color: "#ef4444", abbr: "-1/-1" },
-  { pattern: /\+2\/\+2 counter/i,                     name: "+2/+2",       color: "#4ade80", abbr: "+2/+2" },
-  { pattern: /charge counter/i,                       name: "charge",      color: "#60a5fa", abbr: "⚡"    },
-  { pattern: /\{e\}|energy counter/i,                 name: "energy",      color: "#facc15", abbr: "⟨E⟩"  },
-  { pattern: /experience counter/i,                   name: "experience",  color: "#a78bfa", abbr: "EXP"  },
-  { pattern: /shield counter/i,                       name: "shield",      color: "#67e8f9", abbr: "🛡"   },
-  { pattern: /oil counter/i,                          name: "oil",         color: "#86efac", abbr: "OIL"  },
-  { pattern: /stun counter/i,                         name: "stun",        color: "#fb923c", abbr: "STN"  },
-  { pattern: /time counter/i,                         name: "time",        color: "#c084fc", abbr: "⏱"   },
-  { pattern: /spore counter/i,                        name: "spore",       color: "#a3e635", abbr: "SPR"  },
-  { pattern: /ki counter/i,                           name: "ki",          color: "#f9a8d4", abbr: "KI"   },
-  { pattern: /lore counter/i,                         name: "lore",        color: "#d97706", abbr: "I"    },
-  { pattern: /quest counter/i,                        name: "quest",       color: "#34d399", abbr: "QST"  },
-  { pattern: /age counter/i,                          name: "age",         color: "#94a3b8", abbr: "AGE"  },
-  { pattern: /bounty counter/i,                       name: "bounty",      color: "#fbbf24", abbr: "$"    },
-  { pattern: /level counter|level up/i,               name: "level",       color: "#818cf8", abbr: "LVL"  },
-  { pattern: /training counter/i,                     name: "training",    color: "#4ade80", abbr: "TRN"  },
-  { pattern: /growth counter/i,                       name: "growth",      color: "#16a34a", abbr: "GRW"  },
-  { pattern: /flood counter/i,                        name: "flood",       color: "#38bdf8", abbr: "FLD"  },
-  { pattern: /fade counter/i,                         name: "fade",        color: "#6b7280", abbr: "FDE"  },
-  { pattern: /depletion counter/i,                    name: "depletion",   color: "#78716c", abbr: "DEP"  },
-  { pattern: /verse counter/i,                        name: "verse",       color: "#f472b6", abbr: "VRS"  },
-  { pattern: /luck counter/i,                         name: "luck",        color: "#fde68a", abbr: "LCK"  },
-  { pattern: /study counter/i,                        name: "study",       color: "#93c5fd", abbr: "STD"  },
-  { pattern: /aegis counter/i,                        name: "aegis",       color: "#7dd3fc", abbr: "AGS"  },
-  { pattern: /blood counter/i,                        name: "blood",       color: "#dc2626", abbr: "BLD"  },
-  { pattern: /poison counter/i,                       name: "poison",      color: "#4d7c0f", abbr: "☠"   },
-  { pattern: /blaze counter/i,                        name: "blaze",       color: "#f97316", abbr: "BLZ"  },
-  { pattern: /doom counter/i,                         name: "doom",        color: "#7f1d1d", abbr: "DOOM" },
-  { pattern: /finality counter/i,                     name: "finality",    color: "#581c87", abbr: "FIN"  },
-  { pattern: /hatchling counter/i,                    name: "hatchling",   color: "#fef08a", abbr: "HAT"  },
-  { pattern: /hoofprint counter/i,                    name: "hoofprint",   color: "#d4a574", abbr: "HFP"  },
-  { pattern: /ice counter/i,                          name: "ice",         color: "#bae6fd", abbr: "ICE"  },
-  { pattern: /hunger counter/i,                       name: "hunger",      color: "#92400e", abbr: "HNG"  },
-  { pattern: /landmark counter/i,                     name: "landmark",    color: "#a16207", abbr: "LMK"  },
-  { pattern: /manifestation counter/i,                name: "manifestation",color: "#7e22ce",abbr: "MNF"  },
-  { pattern: /muster counter/i,                       name: "muster",      color: "#15803d", abbr: "MST"  },
-  { pattern: /page counter/i,                         name: "page",        color: "#e2e8f0", abbr: "PG"   },
-  { pattern: /plague counter/i,                       name: "plague",      color: "#365314", abbr: "PLG"  },
-  { pattern: /plot counter/i,                         name: "plot",        color: "#d8b4fe", abbr: "PLT"  },
-  { pattern: /pressure counter/i,                     name: "pressure",    color: "#f43f5e", abbr: "PRS"  },
-  { pattern: /rust counter/i,                         name: "rust",        color: "#b45309", abbr: "RST"  },
-  { pattern: /slime counter/i,                        name: "slime",       color: "#84cc16", abbr: "SLM"  },
-  { pattern: /slumber counter/i,                      name: "slumber",     color: "#1e40af", abbr: "SLB"  },
-  { pattern: /soot counter/i,                         name: "soot",        color: "#374151", abbr: "SOT"  },
-  { pattern: /storage counter/i,                      name: "storage",     color: "#6b7280", abbr: "STG"  },
-  { pattern: /trap counter/i,                         name: "trap",        color: "#b91c1c", abbr: "TRP"  },
-  { pattern: /wish counter/i,                         name: "wish",        color: "#fbcfe8", abbr: "WSH"  },
-  { pattern: /wound counter/i,                        name: "wound",       color: "#991b1b", abbr: "WND"  },
-]
-
-interface LoyaltyAbility { label: string; delta: number }
-
-interface ParsedAbilities {
-  counterNames: string[]         // counter types detected in oracle text
-  loyaltyAbilities: LoyaltyAbility[]
-  isSaga: boolean
-  isPlaneswalker: boolean
-}
-
-// Counters that track player state — they go on players, not permanents
-const PLAYER_COUNTERS = new Set(["energy", "experience", "poison", "rad", "ticket"])
-
-// Sentence places counter on self (this card)
-function onSelf(s: string): boolean {
-  return (
-    /enters?(?:\s+the\s+battlefield)?\s+with[^.]*?counter/i.test(s) ||
-    /\bput\b[^.]*?\bcounters?\b[^.]*?\bon\s+(?:it|this)\b/i.test(s) ||
-    /\b(?:it|this\s+\w+)\s+(?:gets?|gains?)\s+[^.]*?\bcounters?\b/i.test(s)
-  )
-}
-
-// Sentence places counter on another permanent or player (not self)
-function onOther(s: string): boolean {
-  return /\bput\b[^.]*?\bcounters?\b[^.]*?\bon\s+(?:target\b|each\b|another\b|an?\s+opponent|players?)\b/i.test(s)
-}
-
-function parseCardAbilities(oracleText: string, typeLine: string): ParsedAbilities {
-  const text = oracleText ?? ""
-  const type = typeLine ?? ""
-  const isPlaneswalker = /planeswalker/i.test(type)
-  const isSaga = /saga/i.test(type)
-
-  const counterNames: string[] = []
-  for (const def of COUNTER_DEFS) {
-    if (!def.pattern.test(text)) continue
-    // Player counters never go on permanents
-    if (PLAYER_COUNTERS.has(def.name)) continue
-
-    // Analyse each sentence that mentions this counter type
-    const sentences = text.split(/\. |\n/).filter(s => def.pattern.test(s))
-    // Only consider sentences that actually place a counter (contain "put" or a self-placement verb)
-    const placementSentences = sentences.filter(s => /\bput\b[^.]*?\bcounters?\b/i.test(s) || onSelf(s))
-
-    if (placementSentences.some(s => onSelf(s))) {
-      // Explicitly placed on self — include
-      counterNames.push(def.name)
-    } else if (placementSentences.length > 0 && placementSentences.every(s => onOther(s))) {
-      // Every placement puts the counter on another permanent/player — skip
-      continue
-    } else {
-      // Mentioned in a triggered/static context without clear placement target (level up,
-      // keyword reminder, proliferate, etc.) — include so the player can track it
-      counterNames.push(def.name)
-    }
-  }
-
-  if (isSaga && !counterNames.includes("lore")) counterNames.unshift("lore")
-  if (isPlaneswalker && !counterNames.includes("loyalty")) counterNames.unshift("loyalty" as never)
-
-  // Parse planeswalker loyalty ability costs: lines like "+2: …", "-3: …", "0: …"
-  const loyaltyAbilities: LoyaltyAbility[] = []
-  if (isPlaneswalker) {
-    for (const line of text.split(/\n/)) {
-      const m = line.trim().match(/^([+\-−]?\d+)\s*:(.+)/)
-      if (!m) continue
-      const delta = parseInt(m[1].replace("−", "-"))
-      if (isNaN(delta)) continue
-      const preview = m[2].trim().replace(/\{[^}]+\}/g, "").trim().slice(0, 48)
-      loyaltyAbilities.push({
-        delta,
-        label: `${delta > 0 ? `+${delta}` : delta}: ${preview}${preview.length >= 48 ? "…" : ""}`,
-      })
-    }
-  }
-
-  return { counterNames, loyaltyAbilities, isSaga, isPlaneswalker }
-}
-
-function counterColor(name: string): string {
-  return COUNTER_DEFS.find(d => d.name === name)?.color ?? "#6b7280"
-}
-
-function counterAbbr(name: string): string {
-  return COUNTER_DEFS.find(d => d.name === name)?.abbr ?? name.slice(0, 3).toUpperCase()
-}
+// Counter detection + planeswalker loyalty parsing now live in @/lib/counters
+// (shared with the multiplayer game client). See the import at the top.
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface BFCard {
@@ -177,15 +27,6 @@ interface BFCard {
   isCopy?: boolean
 }
 
-interface Opponent {
-  name: string
-  life: number
-  cmdDamage: Record<string, number>
-}
-
-// "self" = you, number = opponent index, null = nobody
-type StatusHolder = "self" | number | null
-
 interface PS {
   library: CardInDeck[]
   hand: CardInDeck[]
@@ -193,17 +34,11 @@ interface PS {
   graveyard: CardInDeck[]
   exile: CardInDeck[]
   commandZone: CardInDeck[]
-  life: number
-  opponents: Opponent[]
-  turn: number
   mulligans: number
   mulliganPhase: "playing" | "bottoming"
-  gamePhase: GamePhase
   bottomCount: number
   bottomSelected: Set<number>
   playerCounters: Record<string, number>
-  monarch: StatusHolder
-  initiative: StatusHolder
   cmdCastCount: Record<string, number>
 }
 
@@ -223,7 +58,8 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 function expand(cards: CardInDeck[]): CardInDeck[] {
-  return cards.flatMap((c) => Array.from({ length: c.quantity }, () => ({ ...c })))
+  // Clamp quantity to a positive integer so a malformed value can't drop a card.
+  return cards.flatMap((c) => Array.from({ length: Math.max(1, Math.floor(Number(c.quantity)) || 1) }, () => ({ ...c })))
 }
 
 function makeBFC(card: CardInDeck, x: number, y: number, tag = ""): BFCard {
@@ -292,17 +128,10 @@ function newGame(cards: CardInDeck[]): PS {
     library: lib, hand,
     battlefield: [], graveyard: [], exile: [],
     commandZone: [...commanders, ...companion],
-    life: 40,
-    opponents: [
-      { name: "Player 2", life: 40, cmdDamage: {} },
-      { name: "Player 3", life: 40, cmdDamage: {} },
-      { name: "Player 4", life: 40, cmdDamage: {} },
-    ],
-    turn: 1, mulligans: 0,
-    mulliganPhase: "playing", gamePhase: "main1",
+    mulligans: 0,
+    mulliganPhase: "playing",
     bottomCount: 0, bottomSelected: new Set(),
     playerCounters: {},
-    monarch: null, initiative: null,
     cmdCastCount: {},
   }
 }
@@ -341,6 +170,8 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
   const gyRef = useRef<HTMLButtonElement>(null)
   const exileRef = useRef<HTMLButtonElement>(null)
   const handZoneRef = useRef<HTMLDivElement>(null)
+  const handScroll = useHandScroll(ps.hand.length)
+  const { hoverProps, preview: hoverPreview } = useHoverPreview()
   const bfDrag = useRef<{ id: string; sx: number; sy: number; cx: number; cy: number; moved: boolean } | null>(null)
   const bfClickBlocked = useRef(false)
   // Fixed list of all commander/companion cards for this game — used to render ghost placeholders
@@ -381,13 +212,6 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
       }
       if (e.key === "d" || e.key === "D") {
         setPS(s => s.library.length === 0 ? s : { ...s, library: s.library.slice(1), hand: [...s.hand, s.library[0]] })
-      }
-      if (e.key === "n" || e.key === "N") {
-        setPS(s => {
-          const next = nextPhase(s.gamePhase)
-          if (next === "untap") return { ...s, gamePhase: next, battlefield: s.battlefield.map(c => ({ ...c, tapped: false })), turn: s.turn + 1 }
-          return { ...s, gamePhase: next }
-        })
       }
       if (e.key === "u" || e.key === "U") {
         setPS(s => ({ ...s, battlefield: s.battlefield.map(c => ({ ...c, tapped: false })) }))
@@ -431,44 +255,8 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
       return { ...s, hand: kept, library: [...s.library, ...shuffle(bottomed)], mulliganPhase: "playing", bottomSelected: new Set() }
     }), [upd])
 
-  const advancePhase = useCallback(() =>
-    upd(s => {
-      const next = nextPhase(s.gamePhase)
-      if (next === "untap") return { ...s, gamePhase: next, battlefield: s.battlefield.map(c => ({ ...c, tapped: false })), turn: s.turn + 1 }
-      return { ...s, gamePhase: next }
-    }), [upd])
-
   const untapAll = useCallback(() =>
     upd(s => ({ ...s, battlefield: s.battlefield.map(c => ({ ...c, tapped: false })) })), [upd])
-
-  const adjustLife = useCallback((d: number) => upd(s => ({ ...s, life: s.life + d })), [upd])
-
-  const adjustOppLife = useCallback((idx: number, d: number) =>
-    upd(s => ({
-      ...s,
-      opponents: s.opponents.map((o, i) => i === idx ? { ...o, life: o.life + d } : o),
-    })), [upd])
-
-  const adjustCmdDamage = useCallback((oppIdx: number, cmdName: string, d: number) =>
-    upd(s => ({
-      ...s,
-      opponents: s.opponents.map((o, i) => {
-        if (i !== oppIdx) return o
-        const prev = o.cmdDamage[cmdName] ?? 0
-        const next = Math.max(0, prev + d)
-        const cmdDamage = { ...o.cmdDamage, [cmdName]: next }
-        return { ...o, life: o.life - d, cmdDamage }
-      }),
-    })), [upd])
-
-  const renameOpponent = useCallback((idx: number, name: string) =>
-    upd(s => ({
-      ...s,
-      opponents: s.opponents.map((o, i) => i === idx ? { ...o, name } : o),
-    })), [upd])
-
-  const setMonarch = useCallback((h: StatusHolder) => upd(s => ({ ...s, monarch: h })), [upd])
-  const setInitiative = useCallback((h: StatusHolder) => upd(s => ({ ...s, initiative: h })), [upd])
 
   const adjustCmdCast = useCallback((name: string, d: number) =>
     upd(s => {
@@ -477,14 +265,6 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
       if (next === 0) delete cmdCastCount[name]
       return { ...s, cmdCastCount }
     }), [upd])
-  const adjustPlayerCounter = useCallback((name: string, delta: number) =>
-    upd(s => {
-      const next = Math.max(0, (s.playerCounters[name] ?? 0) + delta)
-      const counters = { ...s.playerCounters, [name]: next }
-      if (next === 0) delete counters[name]
-      return { ...s, playerCounters: counters }
-    }), [upd])
-
   const playFromHandAt = useCallback((idx: number, x: number, y: number) =>
     upd(s => {
       const card = s.hand[idx]
@@ -712,6 +492,17 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
       else if (hz && over(hz)) bounce(id)
       else if (gy && over(gy)) toGY(id)
       else if (ex && over(ex)) toExile(id)
+      else {
+        // Stayed on the battlefield — bring it to the front of the stack (last moved = on top).
+        upd(s => {
+          const idx = s.battlefield.findIndex(b => b.id === id)
+          if (idx === -1) return s
+          const next = [...s.battlefield]
+          const [moved] = next.splice(idx, 1)
+          next.push(moved)
+          return { ...s, battlefield: next }
+        })
+      }
     }
     bfDrag.current = null
     setDropTarget(null)
@@ -737,6 +528,7 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
         if (card.isCompanion) {
           upd(s => ({ ...s, commandZone: s.commandZone.filter(c => c.scryfallId !== card.scryfallId), hand: [...s.hand, card] }))
         } else {
+          // Casting auto-increments commander tax (like the game); still correctable with the −/+ controls.
           upd(s => ({
             ...s,
             commandZone: s.commandZone.filter(c => c.scryfallId !== card.scryfallId),
@@ -839,75 +631,14 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
             className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.07] transition-colors flex-shrink-0">
             Proliferate
           </button>
-
-          <div className="w-px h-4 flex-shrink-0" style={{ background: "rgba(255,255,255,0.07)" }} />
-
-          {/* Phase tracker */}
-          <div className="flex items-center gap-0.5 flex-shrink-0">
-            {PHASES.map(phase => {
-              const active = ps.gamePhase === phase.id
-              return (
-                <button key={phase.id}
-                  onClick={(e) => { e.stopPropagation(); upd(s => ({ ...s, gamePhase: phase.id })) }}
-                  className="px-2 py-0.5 rounded text-[10px] font-bold transition-all"
-                  title={phase.label}
-                  style={{
-                    background: active ? `${phase.color}22` : "transparent",
-                    color: active ? phase.color : "rgba(255,255,255,0.25)",
-                    border: `1px solid ${active ? phase.color : "transparent"}`,
-                  }}>
-                  {phase.short}
-                </button>
-              )
-            })}
-            <button onClick={(e) => { e.stopPropagation(); advancePhase() }}
-              className="ml-1 w-6 h-6 flex items-center justify-center rounded text-zinc-500 hover:text-white hover:bg-white/[0.08] text-sm font-bold transition-colors"
-              title="Next phase (N)">→</button>
-          </div>
-
-          <span className="text-[10px] text-zinc-700 font-bold flex-shrink-0">T{ps.turn}</span>
         </div>
 
         {/* Always-visible right controls */}
         <div className="flex items-center gap-1 px-2 py-1.5 flex-shrink-0 border-l"
           style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-          <button onClick={() => adjustLife(-1)} className="w-6 h-6 rounded flex items-center justify-center text-zinc-500 hover:text-red-400 hover:bg-white/[0.08] font-bold text-base transition-colors">−</button>
-          <span className="text-xl font-bold tabular-nums w-10 text-center"
-            style={{ color: ps.life <= 5 ? "#ef4444" : ps.life <= 10 ? "#f97316" : "#ffffff" }}>{ps.life}</span>
-          <button onClick={() => adjustLife(+1)} className="w-6 h-6 rounded flex items-center justify-center text-zinc-500 hover:text-green-400 hover:bg-white/[0.08] font-bold text-base transition-colors">+</button>
-          <span className="text-[9px] text-zinc-600 uppercase tracking-wider">Life</span>
-
-          <div className="w-px h-4 mx-1" style={{ background: "rgba(255,255,255,0.07)" }} />
-
           <button onClick={onClose} className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.07] transition-colors">
             <X className="w-4 h-4" />
           </button>
-        </div>
-      </div>
-
-      {/* ── Panels strip — always between header and battlefield ──────────── */}
-      <div
-        className="flex-shrink-0 select-none"
-        style={{ background: "rgba(6,7,30,0.97)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex flex-col gap-1 px-3 py-1.5 mx-auto" style={{ maxWidth: 1230 }}>
-          <OpponentsPanel
-            opponents={ps.opponents}
-            commanders={cmdCards.current.filter(c => c.isCommander)}
-            onAdjustLife={adjustOppLife}
-            onAdjustCmdDamage={adjustCmdDamage}
-            onRename={renameOpponent}
-          />
-          <PlayerSidePanel
-            playerCounters={ps.playerCounters}
-            opponents={ps.opponents}
-            monarch={ps.monarch}
-            initiative={ps.initiative}
-            onAdjustCounter={adjustPlayerCounter}
-            onSetMonarch={setMonarch}
-            onSetInitiative={setInitiative}
-          />
         </div>
       </div>
 
@@ -993,6 +724,7 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
           return (
             <div key={bfc.id}
               className="absolute select-none group/bfc"
+              {...hoverProps(uri)}
               style={{
                 left: bfc.x, top: bfc.y, width: W, height: H,
                 transform: bfc.tapped ? "rotate(90deg)" : "none",
@@ -1015,7 +747,7 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
               onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setBfCtx({ id: bfc.id, x: e.clientX, y: e.clientY }) }}
             >
               {uri ? (
-                <img src={uri} alt={bfc.card.name} draggable={false}
+                <img src={scryfallImage(uri, "large")} alt={bfc.card.name} draggable={false}
                   className="w-full h-full rounded-lg shadow-xl select-none"
                   style={{ objectFit: "cover", objectPosition: "top" }} />
               ) : (
@@ -1162,7 +894,7 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
           zIndex: 30,
         }}>
         {/* Bubble — same width as the playmat */}
-        <div className="mx-auto" style={{
+        <div className="mx-auto relative" style={{
           width: "min(95%, 1230px)",
           background: dropTarget === "hand" ? "rgba(99,179,237,0.06)" : "rgba(13,16,40,0.9)",
           border: dropTarget === "hand" ? "1px solid rgba(99,179,237,0.55)" : "1px solid rgba(99,102,241,0.18)",
@@ -1171,10 +903,9 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
             ? "0 0 24px rgba(99,179,237,0.2), inset 0 1px 0 rgba(255,255,255,0.04)"
             : "0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)",
           transition: "background 0.12s, border 0.12s, box-shadow 0.12s",
-          overflowX: "auto",
-          overflowY: "visible",
-          scrollbarWidth: "none",
         }}>
+          <HandScrollButtons overflow={handScroll.overflow} start={handScroll.start} stop={handScroll.stop} />
+          <div ref={handScroll.ref} style={{ overflowX: "auto", overflowY: "visible", scrollbarWidth: "none", borderRadius: 14 }}>
           <div className="flex items-center gap-2 px-3 py-3" style={{ minWidth: "max-content" }}>
             {ps.hand.length === 0 ? (
               <div className="flex items-center justify-center w-full" style={{ minWidth: 200, minHeight: H }}>
@@ -1187,11 +918,12 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
               return (
                 <div key={`${card.scryfallId}-${idx}`}
                   className="flex-shrink-0 group/hand"
+                  {...hoverProps(activeUri)}
                   style={{ opacity: isDragging ? 0.2 : 1, transition: "opacity 0.15s" }}>
                   <div className="transition-all duration-150 group-hover/hand:-translate-y-2 group-hover/hand:shadow-2xl"
                     style={{ width: W, height: H, position: "relative", borderRadius: 8 }}>
                     {activeUri ? (
-                      <img src={activeUri} alt={card.name} draggable={false}
+                      <img src={scryfallImage(activeUri, "large")} alt={card.name} draggable={false}
                         className="shadow-lg select-none"
                         style={{
                           width: W, height: H, display: "block", borderRadius: 8,
@@ -1246,6 +978,7 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
               )
             })}
           </div>
+          </div>
         </div>
       </div>
 
@@ -1257,7 +990,7 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
         return createPortal(
           <div style={{ position: "fixed", pointerEvents: "none", zIndex: 9999, left: drag.x - W / 2, top: drag.y - H / 2, width: W, height: H, opacity: 0.92, transform: "scale(1.07) rotate(-1.5deg)", filter: "drop-shadow(0 24px 48px rgba(0,0,0,0.85))" }}>
             {uri ? (
-              <img src={uri} alt={card.name} draggable={false} className="w-full h-full rounded-lg" style={{ objectFit: "cover", objectPosition: "top" }} />
+              <img src={scryfallImage(uri, "large")} alt={card.name} draggable={false} className="w-full h-full rounded-lg" style={{ objectFit: "cover", objectPosition: "top" }} />
             ) : (
               <div className="w-full h-full rounded-lg flex items-center justify-center text-[9px] text-zinc-400 p-1" style={{ background: "#1a1a2e" }}>
                 {card.name}
@@ -1474,12 +1207,15 @@ export function PlaytestView({ cards, onClose }: { cards: CardInDeck[]; onClose:
         />
       )}
 
+      {/* Hover-to-enlarge preview (renders via portal) */}
+      {hoverPreview}
+
       {/* ── Zoom ────────────────────────────────────────────────────────────── */}
       {zoomed && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center"
           style={{ background: "rgba(0,0,0,0.92)" }}
           onClick={() => setZoomed(null)}>
-          <img src={zoomed} alt="" className="rounded-2xl shadow-2xl"
+          <img src={scryfallImage(zoomed, "png")} alt="" className="rounded-2xl shadow-2xl"
             style={{ maxHeight: "90vh", maxWidth: 440 }}
             onClick={(e) => e.stopPropagation()} />
         </div>
@@ -1562,7 +1298,7 @@ function CmdZoneCard({ cmd, castCount, onCastCountChange, onDragStart }: {
   return (
     <div className="relative group" style={{ width: W, cursor: "grab" }}>
       {uri ? (
-        <img src={uri} alt={cmd.name} draggable={false} className="rounded-lg shadow-2xl select-none"
+        <img src={scryfallImage(uri, "large")} alt={cmd.name} draggable={false} className="rounded-lg shadow-2xl select-none"
           style={{ width: W, height: H, objectFit: "cover", objectPosition: "top", border: `1.5px solid ${borderColor}` }}
           onMouseDown={onDragStart} />
       ) : (
@@ -1619,6 +1355,7 @@ function CmdZoneCard({ cmd, castCount, onCastCountChange, onDragStart }: {
 // ── LibraryModal ──────────────────────────────────────────────────────────────
 function LibraryModal({ library, onClose, onDrawSpecific }: { library: CardInDeck[]; onClose: () => void; onDrawSpecific: (idx: number) => void }) {
   const [query, setQuery] = useState("")
+  const [zoomed, setZoomed] = useState<string | null>(null)
   const filtered = library.map((c, i) => ({ c, i })).filter(({ c }) => !query || c.name.toLowerCase().includes(query.toLowerCase()))
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.78)" }}
@@ -1642,8 +1379,17 @@ function LibraryModal({ library, onClose, onDrawSpecific }: { library: CardInDec
           {filtered.map(({ c, i }) => (
             <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[0.05] transition-colors group/row">
               <span className="text-[9px] text-zinc-700 tabular-nums w-5 text-right flex-shrink-0">{i + 1}</span>
-              {c.imageUri && <img src={c.imageUri} alt="" draggable={false} className="rounded flex-shrink-0 object-cover object-top" style={{ width: 22, height: 31 }} />}
+              {c.imageUri && <img src={c.imageUri} alt="" draggable={false}
+                onClick={() => setZoomed(c.imageUri!)}
+                title="Zoom"
+                className="rounded flex-shrink-0 object-cover object-top cursor-zoom-in hover:ring-2 hover:ring-amber-500/60" style={{ width: 22, height: 31 }} />}
               <span className="text-xs text-zinc-300 truncate flex-1">{c.name}</span>
+              {c.imageUri && (
+                <button onClick={() => setZoomed(c.imageUri!)}
+                  className="text-[9px] text-zinc-700 hover:text-sky-400 opacity-0 group-hover/row:opacity-100 transition-all flex-shrink-0 font-semibold">
+                  Zoom
+                </button>
+              )}
               <button onClick={() => { onDrawSpecific(i); onClose() }}
                 className="text-[9px] text-zinc-700 hover:text-amber-400 opacity-0 group-hover/row:opacity-100 transition-all flex-shrink-0 font-semibold">
                 Draw
@@ -1652,6 +1398,12 @@ function LibraryModal({ library, onClose, onDrawSpecific }: { library: CardInDec
           ))}
         </div>
       </div>
+      {zoomed && (
+        <div className="fixed inset-0 z-[400] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.9)" }}
+          onClick={(e) => { e.stopPropagation(); setZoomed(null) }}>
+          <img src={zoomed} alt="" className="rounded-2xl shadow-2xl" style={{ maxHeight: "90vh", maxWidth: 440 }} />
+        </div>
+      )}
     </div>
   )
 }
@@ -2098,271 +1850,6 @@ function MillModal({ library, n, onChangeN, onConfirm, onClose }: {
           </button>
         </div>
       </div>
-    </div>
-  )
-}
-
-// ── OpponentsPanel ────────────────────────────────────────────────────────────
-function OpponentsPanel({ opponents, commanders, onAdjustLife, onAdjustCmdDamage, onRename }: {
-  opponents: Opponent[]
-  commanders: CardInDeck[]
-  onAdjustLife: (idx: number, d: number) => void
-  onAdjustCmdDamage: (oppIdx: number, cmdName: string, d: number) => void
-  onRename: (idx: number, name: string) => void
-}) {
-  const [editingIdx, setEditingIdx] = useState<number | null>(null)
-
-  const lifeColor = (life: number) =>
-    life <= 0 ? "#6b7280" : life <= 5 ? "#ef4444" : life <= 10 ? "#f97316" : "#e4e4e7"
-
-  const shortCmd = (name: string) => {
-    const beforeComma = name.split(",")[0].trim()
-    const words = beforeComma.split(" ")
-    return words.length <= 2 ? beforeComma : words.slice(-1)[0]
-  }
-
-  return (
-    <div className="select-none w-full rounded-xl shadow-2xl overflow-visible"
-      style={{ background: "rgba(8,8,18,0.94)", border: "1px solid rgba(255,255,255,0.08)" }}>
-      <div className="flex items-center px-2 py-1.5">
-        <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600 flex-shrink-0 mr-2">Opponents</span>
-        <div className="flex-1 flex items-center justify-evenly gap-1.5">
-        {opponents.map((opp, i) => {
-          const isDead = opp.life <= 0
-          return (
-            <div key={i} className="flex-1 flex items-center justify-between px-2 py-1 rounded-lg"
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.07)",
-              }}>
-              {/* Name */}
-              {editingIdx === i ? (
-                <input
-                  value={opp.name}
-                  onChange={e => onRename(i, e.target.value)}
-                  onBlur={() => setEditingIdx(null)}
-                  onKeyDown={e => e.key === "Enter" && setEditingIdx(null)}
-                  autoFocus
-                  className="w-16 text-[9px] font-semibold bg-transparent focus:outline-none text-zinc-200 border-b border-zinc-600"
-                />
-              ) : (
-                <span onClick={() => setEditingIdx(i)}
-                  className="text-[9px] font-semibold text-zinc-400 hover:text-zinc-200 cursor-text max-w-[56px] truncate transition-colors">
-                  {isDead ? "💀" : ""}{opp.name}
-                </span>
-              )}
-              {/* Life */}
-              <button onClick={() => onAdjustLife(i, -1)}
-                className="w-3.5 h-3.5 flex items-center justify-center text-[11px] font-bold text-zinc-600 hover:text-red-400 transition-colors">−</button>
-              <span className="text-xs font-black tabular-nums w-6 text-center" style={{ color: lifeColor(opp.life) }}>{opp.life}</span>
-              <button onClick={() => onAdjustLife(i, +1)}
-                className="w-3.5 h-3.5 flex items-center justify-center text-[11px] font-bold text-zinc-600 hover:text-green-400 transition-colors">+</button>
-              {/* Commander damage inline chips */}
-              {commanders.map(cmd => {
-                const dmg = opp.cmdDamage[cmd.name] ?? 0
-                const lethal = dmg >= 21
-                if (dmg === 0 && commanders.length > 1) return null
-                return (
-                  <div key={cmd.name} className="flex items-center gap-px ml-1 rounded px-1 py-0.5"
-                    style={{
-                      background: lethal ? "rgba(239,68,68,0.18)" : "rgba(255,255,255,0.05)",
-                      border: `1px solid ${lethal ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.07)"}`,
-                    }}>
-                    <span className="text-[7px] text-zinc-600 mr-0.5" title={cmd.name}>⚔</span>
-                    <button onClick={() => onAdjustCmdDamage(i, cmd.name, -1)} disabled={dmg === 0}
-                      className="w-3 h-3 flex items-center justify-center text-[10px] text-zinc-600 hover:text-white disabled:opacity-20">−</button>
-                    <span className="text-[9px] font-black tabular-nums w-3 text-center"
-                      style={{ color: lethal ? "#ef4444" : dmg > 0 ? "#fbbf24" : "rgba(255,255,255,0.2)" }}>{dmg}</span>
-                    <button onClick={() => onAdjustCmdDamage(i, cmd.name, +1)}
-                      className="w-3 h-3 flex items-center justify-center text-[10px] text-zinc-600 hover:text-white">+</button>
-                  </div>
-                )
-              })}
-            </div>
-          )
-        })}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── PlayerSidePanel ───────────────────────────────────────────────────────────
-const SIDE_COUNTERS = [
-  { key: "poison",     icon: "☠",  color: "#4ade80", label: "Poison",     warn: 10 },
-  { key: "energy",     icon: "⚡", color: "#facc15", label: "Energy",     warn: 0  },
-  { key: "experience", icon: "✦",  color: "#c084fc", label: "Experience", warn: 0  },
-  { key: "storm",      icon: "#",  color: "#94a3b8", label: "Storm",      warn: 0  },
-] as const
-
-function PlayerSidePanel({ playerCounters, opponents, monarch, initiative, onAdjustCounter, onSetMonarch, onSetInitiative }: {
-  playerCounters: Record<string, number>
-  opponents: Opponent[]
-  monarch: StatusHolder
-  initiative: StatusHolder
-  onAdjustCounter: (key: string, delta: number) => void
-  onSetMonarch: (h: StatusHolder) => void
-  onSetInitiative: (h: StatusHolder) => void
-}) {
-  const [openMenu, setOpenMenu] = useState<"monarch" | "initiative" | null>(null)
-
-  const players: { label: string; value: StatusHolder }[] = [
-    { label: "You", value: "self" },
-    ...opponents.map((o, i) => ({ label: o.name, value: i as StatusHolder })),
-    { label: "Nobody", value: null },
-  ]
-
-  const holderLabel = (h: StatusHolder) => {
-    if (h === null) return null
-    if (h === "self") return "You"
-    return opponents[h as number]?.name ?? `P${(h as number) + 2}`
-  }
-
-  return (
-    <div className="select-none w-full rounded-xl shadow-2xl overflow-visible"
-      style={{ background: "rgba(8,8,18,0.95)", border: "1px solid rgba(255,255,255,0.08)" }}>
-      <div className="flex items-center px-2 py-1.5">
-        <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600 flex-shrink-0 mr-1.5">Status</span>
-        <div className="flex-1 flex items-center justify-evenly gap-1.5">
-
-        {/* Counter chips */}
-        {SIDE_COUNTERS.map(({ key, icon, color, label, warn }) => {
-          const val = playerCounters[key] ?? 0
-          const isWarn = warn > 0 && val >= warn
-          return (
-            <div key={key} className="flex-1 flex items-center justify-between px-1.5 py-1 rounded-lg"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-              <span className="text-[11px] leading-none" style={{ color: val > 0 ? color : "rgba(255,255,255,0.2)" }}>{icon}</span>
-              <span className="text-[9px] text-zinc-500 leading-none mx-1">{label}</span>
-              <button onClick={() => onAdjustCounter(key, -1)} disabled={val === 0}
-                className="w-3.5 h-3.5 flex items-center justify-center text-[11px] font-bold text-zinc-600 hover:text-white disabled:opacity-25 transition-colors">−</button>
-              <span className="text-[10px] font-bold tabular-nums w-4 text-center"
-                style={{ color: isWarn ? "#ef4444" : val > 0 ? color : "rgba(255,255,255,0.22)" }}>{val}</span>
-              <button onClick={() => onAdjustCounter(key, +1)}
-                className="w-3.5 h-3.5 flex items-center justify-center text-[11px] font-bold text-zinc-600 hover:text-white transition-colors">+</button>
-            </div>
-          )
-        })}
-
-        {/* Monarch / Initiative chips */}
-        {(["monarch", "initiative"] as const).map(type => {
-          const holder = type === "monarch" ? monarch : initiative
-          const onSet = type === "monarch" ? onSetMonarch : onSetInitiative
-          const icon = type === "monarch" ? "👑" : "⚔️"
-          const active = holder !== null
-          const label = holderLabel(holder)
-          return (
-            <div key={type} className="relative flex-1">
-              <button
-                onClick={e => { e.stopPropagation(); setOpenMenu(openMenu === type ? null : type) }}
-                className="w-full flex items-center justify-between px-2 py-1 rounded-lg transition-all"
-                style={{
-                  background: active ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.04)",
-                  border: `1px solid ${active ? "rgba(245,158,11,0.35)" : "rgba(255,255,255,0.07)"}`,
-                }}>
-                <span className="text-[11px] leading-none">{icon}</span>
-                <span className="text-[9px] font-semibold truncate mx-1"
-                  style={{ color: active ? "#fbbf24" : "rgba(255,255,255,0.28)" }}>
-                  {active ? label : (type === "monarch" ? "Monarch" : "Initiative")}
-                </span>
-                <span className="text-[8px] text-zinc-700">▾</span>
-              </button>
-              {openMenu === type && (
-                <>
-                  <div className="fixed inset-0" style={{ zIndex: 99 }} onClick={() => setOpenMenu(null)} />
-                  <div className="absolute top-full mt-1 right-0 rounded-xl shadow-2xl overflow-hidden py-1"
-                    style={{ zIndex: 100, background: "#111118", border: "1px solid rgba(255,255,255,0.1)", minWidth: 130 }}>
-                    {players.map(p => (
-                      <button key={String(p.value)}
-                        onClick={e => { e.stopPropagation(); onSet(p.value); setOpenMenu(null) }}
-                        className="w-full text-left px-3 py-1.5 text-xs hover:bg-white/[0.07] transition-colors flex items-center gap-2"
-                        style={{ color: holder === p.value ? "#fbbf24" : "#d4d4d8" }}>
-                        {holder === p.value && <span className="text-[8px]">✓</span>}
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          )
-        })}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── StatusPanel (Monarch / Initiative) ────────────────────────────────────────
-function StatusPanel({ monarch, initiative, opponents, onSetMonarch, onSetInitiative }: {
-  monarch: StatusHolder
-  initiative: StatusHolder
-  opponents: Opponent[]
-  onSetMonarch: (h: StatusHolder) => void
-  onSetInitiative: (h: StatusHolder) => void
-}) {
-  const [openMenu, setOpenMenu] = useState<"monarch" | "initiative" | null>(null)
-
-  const holderLabel = (h: StatusHolder) => {
-    if (h === null) return null
-    if (h === "self") return "You"
-    return opponents[h as number]?.name ?? `P${(h as number) + 2}`
-  }
-
-  const players: { label: string; value: StatusHolder }[] = [
-    { label: "You", value: "self" },
-    ...opponents.map((o, i) => ({ label: o.name, value: i as StatusHolder })),
-    { label: "Nobody", value: null },
-  ]
-
-  const StatusBadge = ({ type, holder, onSet }: {
-    type: "monarch" | "initiative"
-    holder: StatusHolder
-    onSet: (h: StatusHolder) => void
-  }) => {
-    const icon = type === "monarch" ? "👑" : "⚔️"
-    const label = holderLabel(holder)
-    const active = holder !== null
-    return (
-      <div className="relative">
-        <button
-          onClick={e => { e.stopPropagation(); setOpenMenu(openMenu === type ? null : type) }}
-          className="flex items-center justify-between px-2 py-1 rounded-lg transition-all"
-          style={{
-            background: active ? "rgba(245,158,11,0.15)" : "rgba(255,255,255,0.04)",
-            border: `1px solid ${active ? "rgba(245,158,11,0.4)" : "rgba(255,255,255,0.08)"}`,
-            minWidth: 80,
-          }}>
-          <span className="text-[11px]">{icon}</span>
-          {active ? (
-            <span className="text-[9px] font-bold text-amber-300">{label}</span>
-          ) : (
-            <span className="text-[9px] text-zinc-600">{type === "monarch" ? "Monarch" : "Initiative"}</span>
-          )}
-        </button>
-        {openMenu === type && (
-          <div className="absolute bottom-full mb-1 left-0 rounded-xl shadow-2xl overflow-hidden py-1 z-50"
-            style={{ background: "#111118", border: "1px solid rgba(255,255,255,0.1)", minWidth: 120 }}>
-            {players.map(p => (
-              <button key={String(p.value)} onClick={e => { e.stopPropagation(); onSet(p.value); setOpenMenu(null) }}
-                className="w-full text-left px-3 py-1.5 text-xs hover:bg-white/[0.07] transition-colors flex items-center gap-2"
-                style={{ color: holder === p.value ? "#fbbf24" : "#d4d4d8" }}>
-                {holder === p.value && <span className="text-[8px]">✓</span>}
-                <span>{p.label}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <div className="absolute flex gap-1.5 select-none"
-      style={{ bottom: 160, left: 16, zIndex: 10 }}
-      onClick={e => e.stopPropagation()}>
-      <StatusBadge type="monarch" holder={monarch} onSet={onSetMonarch} />
-      <StatusBadge type="initiative" holder={initiative} onSet={onSetInitiative} />
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
+import { readJson, cardIdsSchema } from "@/lib/api"
 
 export interface EnrichedCard {
   oracleText: string
@@ -28,9 +29,9 @@ export async function POST(req: Request) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const body = await req.json()
-  const ids: string[] = Array.isArray(body.ids) ? body.ids : []
-  if (ids.length === 0) return NextResponse.json({ cards: {} })
+  const parsed = cardIdsSchema.safeParse(await readJson(req))
+  if (!parsed.success || parsed.data.ids.length === 0) return NextResponse.json({ cards: {} })
+  const ids = parsed.data.ids
 
   const result: Record<string, EnrichedCard> = {}
 

@@ -6,6 +6,7 @@ import type { CardInDeck } from "@/types"
 import { isCommanderEligible } from "@/lib/commander"
 import { isCompanionCard } from "@/lib/companion"
 import { getDeckLimit } from "@/lib/rules"
+import { scryfallImage } from "@/lib/scryfall"
 import { HoloCard } from "./HoloCard"
 
 export const CARD_W = 177
@@ -56,7 +57,7 @@ function CardStackItem({
   const [flipped, setFlipped] = useState(false)
 
   const hasTwoFaces = !!card.imageUriBack
-  const displayUri = hasTwoFaces && flipped ? card.imageUriBack! : card.imageUri
+  const displayUri = scryfallImage(hasTwoFaces && flipped ? card.imageUriBack! : card.imageUri, "large")
 
   const isColorViolation =
     hasCommander &&
@@ -355,7 +356,7 @@ export function CardStack({
         >
           {zoomed.uri ? (
             <img
-              src={zoomed.uri}
+              src={scryfallImage(zoomed.uri, "png")}
               alt={zoomed.card.name}
               className="rounded-2xl shadow-2xl"
               style={{ maxHeight: "85vh", maxWidth: 360 }}

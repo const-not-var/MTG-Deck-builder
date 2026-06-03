@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
+import { readJson, cardNamesSchema } from "@/lib/api"
 
 /**
  * Converts a card name to the slug EDHREC uses in its URL paths.
@@ -31,9 +32,9 @@ export async function POST(req: Request) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const body = await req.json()
-  const names: string[] = Array.isArray(body.names) ? body.names : []
-  if (names.length === 0) return NextResponse.json({ salt: {} })
+  const parsed = cardNamesSchema.safeParse(await readJson(req))
+  if (!parsed.success || parsed.data.names.length === 0) return NextResponse.json({ salt: {} })
+  const names = parsed.data.names
 
   const result: Record<string, number> = {}
 
